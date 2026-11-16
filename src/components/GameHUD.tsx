@@ -24,7 +24,6 @@ export function GameHUD({ game, players, timeLeft, turnSeconds }: { game: GameSt
           return (
             <motion.div
               key={p.id}
-              layout
               className={`relative flex min-w-0 flex-1 items-center gap-1.5 rounded-2xl border-2 px-2 py-1 ${active ? 'border-mango-500 bg-mango-100' : 'border-cream-300 bg-cream-50'}`}
               animate={{ scale: active ? 1 : 0.97 }}
               transition={{ duration: 0.26 }}

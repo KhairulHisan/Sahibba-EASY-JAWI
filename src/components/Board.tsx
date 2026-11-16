@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react';
+import type { Bonus, BoardCell } from '../engine/board';
 import { BONUS_META, idx as cellIndex, type BoardCells, type BoardLayout } from '../engine/board';
 import { letterInfo } from '../engine/jawi';
 import { fx } from '../lib/feedback';
@@ -115,6 +116,11 @@ export function Board(props: BoardProps) {
     kind: 'none', sx: 0, sy: 0, sl: 0, st: 0, d0: 0, z0: 1, moved: false,
   });
   const suppressClick = useRef(false);
+  // Stable handlers so memoised cells don't re-render when the parent passes new closures.
+  const activateRef = useRef(onCellActivate);
+  activateRef.current = onCellActivate;
+  const activate = useCallback((x: number, y: number) => activateRef.current(x, y), []);
+  const focusCell = useCallback((x: number, y: number) => setFocus({ x, y }), []);
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('[data-drag]')) return;
@@ -201,89 +207,34 @@ export function Board(props: BoardProps) {
     const row = [];
     for (let x = 0; x < size; x++) {
       const k = cellIndex(size, x, y);
-      const placed = cells[k];
       const d = draft.get(k);
-      const bonus = layout.bonuses[k];
-      const isCenter = x === layout.center.x && y === layout.center.y;
-      const isError = errorCells?.has(k) ?? false;
-      const hint = hintCells?.get(k);
-      const isTarget = targetCells?.has(k) ?? false;
-      const isHover = hoverCell === k && !placed && !d;
-      const tilePx = cellPx - 2;
-      let content = null;
-      let aria = `Baris ${y + 1}, lajur ${x + 1}`;
-      if (placed) {
-        aria += `: ${placed.isBlank ? 'joker ' : ''}${letterInfo(placed.letter)?.name ?? placed.letter}`;
-        content = (
-          <TileFace
-            letter={placed.letter}
-            value={placed.value}
-            isBlank={placed.isBlank}
-            size={tilePx}
-            highlight={lastMoveCells?.has(k)}
-            anim={wave && waveDelay.has(k) ? { kind: 'wave', key: wave.key, delay: waveDelay.get(k) } : null}
-          />
-        );
-      } else if (d) {
-        aria += `: jubin anda ${letterInfo(d.letter)?.name ?? d.letter} (belum disahkan)`;
-        content = (
-          <motion.div
-            className="h-full w-full"
-            initial={{ scale: 0.6, opacity: 0.4 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 26, mass: 0.6 }}
-            {...(interactive && bindDraftTile ? bindDraftTile(d.tileId, tilePx) : {})}
-          >
-            <TileFace
-              letter={d.letter}
-              value={d.value}
-              isBlank={d.isBlank}
-              size={tilePx}
-              pending
-              state={isError ? 'error' : draftState}
-              anim={wobbleKey ? { kind: 'wobble', key: wobbleKey } : wave && waveDelay.has(k) ? { kind: 'wave', key: wave.key, delay: waveDelay.get(k) } : null}
-            />
-          </motion.div>
-        );
-      } else if (hint) {
-        aria += `: cadangan huruf ${letterInfo(hint)?.name ?? hint}`;
-        content = (
-          <span lang="ms-Arab" dir="rtl" className="font-jawi font-bold text-jade-700/80" style={{ fontSize: cellPx * 0.55 }}>
-            {hint}
-          </span>
-        );
-      } else if (isCenter) {
-        aria += ', petak mula, perkataan ganda dua';
-        content = <Icon name="star" size={Math.max(10, cellPx * 0.62)} className="text-mango-600" strokeWidth={2.4} />;
-      } else if (bonus) {
-        aria += `, ${BONUS_META[bonus].label}`;
-        content = (
-          <span className="font-display leading-none font-bold" style={{ fontSize: Math.max(7, cellPx * 0.3) }} aria-hidden="true">
-            {BONUS_META[bonus].short}
-          </span>
-        );
-      }
-      const bg = placed || d ? 'bg-transparent' : isCenter ? 'bg-mango-200' : bonus ? BONUS_STYLE[bonus] : 'bg-cream-200';
+      const delay = waveDelay.get(k);
       row.push(
-        <button
+        <BoardCellView
           key={k}
-          type="button"
-          role="gridcell"
-          data-cell=""
-          data-x={x}
-          data-y={y}
-          tabIndex={focus.x === x && focus.y === y ? 0 : -1}
-          aria-label={aria}
-          onFocus={() => setFocus({ x, y })}
-          onClick={() => {
-            if (suppressClick.current) return;
-            if (interactive) onCellActivate(x, y);
-          }}
-          className={`relative grid place-items-center overflow-visible p-px ${bg} ${isError && !d ? 'ring-2 ring-coral-500 ring-inset' : ''} ${isHover ? 'ring-[3px] ring-mango-500 ring-inset' : ''} ${isTarget ? 'animate-pulse-soft ring-[3px] ring-mango-500 ring-inset' : ''}`}
-          style={{ width: cellPx, height: cellPx, borderRadius: Math.max(3, cellPx * 0.14) }}
-        >
-          {content}
-        </button>,
+          x={x}
+          y={y}
+          cellPx={cellPx}
+          placed={cells[k] ?? null}
+          draft={d ?? null}
+          draftState={draftState}
+          bonus={layout.bonuses[k]}
+          isCenter={x === layout.center.x && y === layout.center.y}
+          isError={errorCells?.has(k) ?? false}
+          hint={hintCells?.get(k)}
+          isTarget={targetCells?.has(k) ?? false}
+          isHover={hoverCell === k}
+          isLastMove={lastMoveCells?.has(k) ?? false}
+          waveKey={delay !== undefined && wave ? wave.key : 0}
+          waveDelay={delay}
+          wobbleKey={d ? (wobbleKey ?? 0) : 0}
+          focused={focus.x === x && focus.y === y}
+          interactive={interactive}
+          bindDraftTile={d && interactive ? bindDraftTile : undefined}
+          onActivate={activate}
+          onFocusCell={focusCell}
+          suppressClick={suppressClick}
+        />,
       );
     }
     rows.push(
@@ -340,3 +291,121 @@ export function Board(props: BoardProps) {
     </div>
   );
 }
+
+interface CellProps {
+  x: number;
+  y: number;
+  cellPx: number;
+  placed: BoardCell | null;
+  draft: DraftCell | null;
+  draftState: TileState;
+  bonus: Bonus | undefined;
+  isCenter: boolean;
+  isError: boolean;
+  hint: string | undefined;
+  isTarget: boolean;
+  isHover: boolean;
+  isLastMove: boolean;
+  waveKey: number;
+  waveDelay: number | undefined;
+  wobbleKey: number;
+  focused: boolean;
+  interactive: boolean;
+  bindDraftTile?: (tileId: string, size: number) => Record<string, unknown>;
+  onActivate: (x: number, y: number) => void;
+  onFocusCell: (x: number, y: number) => void;
+  suppressClick: MutableRefObject<boolean>;
+}
+
+/** Only re-render a cell when something it shows actually changed. */
+function sameCell(a: CellProps, b: CellProps): boolean {
+  const samePlaced = a.placed === b.placed || (!!a.placed && !!b.placed && a.placed.tileId === b.placed.tileId && a.placed.letter === b.placed.letter);
+  const sameDraft = a.draft === b.draft || (!!a.draft && !!b.draft && a.draft.tileId === b.draft.tileId && a.draft.letter === b.draft.letter);
+  return (
+    samePlaced &&
+    sameDraft &&
+    a.cellPx === b.cellPx &&
+    a.isError === b.isError &&
+    a.hint === b.hint &&
+    a.isTarget === b.isTarget &&
+    a.isHover === b.isHover &&
+    a.isLastMove === b.isLastMove &&
+    a.waveKey === b.waveKey &&
+    a.wobbleKey === b.wobbleKey &&
+    a.focused === b.focused &&
+    a.interactive === b.interactive &&
+    (!a.draft || (a.draftState === b.draftState && a.bindDraftTile === b.bindDraftTile))
+  );
+}
+
+const BoardCellView = memo(function BoardCellView(p: CellProps) {
+  const { x, y, cellPx, placed, draft: d, bonus, isCenter, isError, hint } = p;
+  const tilePx = cellPx - 2;
+  let content = null;
+  let aria = `Baris ${y + 1}, lajur ${x + 1}`;
+  const wave = p.waveDelay !== undefined ? { kind: 'wave' as const, key: p.waveKey, delay: p.waveDelay } : null;
+  if (placed) {
+    aria += `: ${placed.isBlank ? 'joker ' : ''}${letterInfo(placed.letter)?.name ?? placed.letter}`;
+    content = <TileFace letter={placed.letter} value={placed.value} isBlank={placed.isBlank} size={tilePx} highlight={p.isLastMove} anim={wave} />;
+  } else if (d) {
+    aria += `: jubin anda ${letterInfo(d.letter)?.name ?? d.letter} (belum disahkan)`;
+    content = (
+      <motion.div
+        className="h-full w-full"
+        initial={{ scale: 0.6, opacity: 0.4 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 26, mass: 0.6 }}
+        {...(p.bindDraftTile ? p.bindDraftTile(d.tileId, tilePx) : {})}
+      >
+        <TileFace
+          letter={d.letter}
+          value={d.value}
+          isBlank={d.isBlank}
+          size={tilePx}
+          pending
+          state={isError ? 'error' : p.draftState}
+          anim={p.wobbleKey ? { kind: 'wobble', key: p.wobbleKey } : wave}
+        />
+      </motion.div>
+    );
+  } else if (hint) {
+    aria += `: cadangan huruf ${letterInfo(hint)?.name ?? hint}`;
+    content = (
+      <span lang="ms-Arab" dir="rtl" className="font-jawi font-bold text-jade-700/80" style={{ fontSize: cellPx * 0.55 }}>
+        {hint}
+      </span>
+    );
+  } else if (isCenter) {
+    aria += ', petak mula, perkataan ganda dua';
+    content = <Icon name="star" size={Math.max(10, cellPx * 0.62)} className="text-mango-600" strokeWidth={2.4} />;
+  } else if (bonus) {
+    aria += `, ${BONUS_META[bonus].label}`;
+    content = (
+      <span className="font-display leading-none font-bold" style={{ fontSize: Math.max(7, cellPx * 0.3) }} aria-hidden="true">
+        {BONUS_META[bonus].short}
+      </span>
+    );
+  }
+  const isHover = p.isHover && !placed && !d;
+  const bg = placed || d ? 'bg-transparent' : isCenter ? 'bg-mango-200' : bonus ? BONUS_STYLE[bonus] : 'bg-cream-200';
+  return (
+    <button
+      type="button"
+      role="gridcell"
+      data-cell=""
+      data-x={x}
+      data-y={y}
+      tabIndex={p.focused ? 0 : -1}
+      aria-label={aria}
+      onFocus={() => p.onFocusCell(x, y)}
+      onClick={() => {
+        if (p.suppressClick.current) return;
+        if (p.interactive) p.onActivate(x, y);
+      }}
+      className={`relative grid place-items-center overflow-visible p-px ${bg} ${isError && !d ? 'ring-2 ring-coral-500 ring-inset' : ''} ${isHover ? 'ring-[3px] ring-mango-500 ring-inset' : ''} ${p.isTarget ? 'animate-pulse-soft ring-[3px] ring-mango-500 ring-inset' : ''}`}
+      style={{ width: cellPx, height: cellPx, borderRadius: Math.max(3, cellPx * 0.14) }}
+    >
+      {content}
+    </button>
+  );
+}, sameCell);

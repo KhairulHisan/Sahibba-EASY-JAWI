@@ -24,6 +24,7 @@ export function TileRack({
   disabled?: boolean;
   hoverRack?: boolean;
 }) {
+  const orderKey = tiles.map((t) => t.id).join(',');
   return (
     <div
       data-rack=""
@@ -40,6 +41,8 @@ export function TileRack({
           return (
             <motion.button
               layout
+              // Re-measure only when the rack order changes, not on every game render.
+              layoutDependency={orderKey}
               key={t.id}
               type="button"
               role="option"

@@ -53,13 +53,16 @@ function failWorker() {
   pending.clear();
 }
 
+/**
+ * Ask the worker; on failure (timeout, crash, missing word list) retry once
+ * with a fresh worker. Only if that also fails do callers fall back to the
+ * main thread, so a single hiccup never freezes the UI.
+ */
 async function ask(lexicon: Lexicon, key: string, req: RequestBody): Promise<BotResponse | null> {
   const first = await askOnce(lexicon, key, req);
-  if (first && !first.ok && first.error === 'lexicon-not-ready') {
-    sentKey = ''; // resend the word list once and retry
-    return askOnce(lexicon, key, req);
-  }
-  return first;
+  if (!first || first.ok) return first;
+  if (first.error === 'lexicon-not-ready') sentKey = '';
+  return askOnce(lexicon, key, req);
 }
 
 function askOnce(lexicon: Lexicon, key: string, req: RequestBody): Promise<BotResponse> | null {

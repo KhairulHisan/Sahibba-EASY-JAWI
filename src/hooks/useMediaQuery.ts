@@ -1,13 +1,24 @@
 import { useSyncExternalStore } from 'react';
 
+// One MediaQueryList per query: creating it on every render is surprisingly costly.
+const lists = new Map<string, MediaQueryList>();
+function list(query: string): MediaQueryList {
+  let l = lists.get(query);
+  if (!l) {
+    l = window.matchMedia(query);
+    lists.set(query, l);
+  }
+  return l;
+}
+
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (cb) => {
-      const m = window.matchMedia(query);
+      const m = list(query);
       m.addEventListener('change', cb);
       return () => m.removeEventListener('change', cb);
     },
-    () => window.matchMedia(query).matches,
+    () => list(query).matches,
     () => false,
   );
 }
