@@ -8,6 +8,7 @@ Fail dalam folder ini disediakan untuk menyemak ejaan Jawi dan makna **1,375 per
 |---|---|
 | `senarai-semakan-kamus.csv` | Semua 1,375 perkataan, disusun mengikut keutamaan semakan |
 | `bahagian/bahagian-01.csv` … `bahagian-07.csv` | Senarai yang sama dipecah 200 baris setiap fail (lebih tepat apabila disemak oleh AI) |
+| `ejawimakmur/rumi-01.txt` … `rumi-07.txt` | Perkataan Rumi sahaja (susunan sama) untuk ditampal ke penukar eJawiMakmur |
 
 Fail dijana semula dengan `npm run lexicon:export-review`.
 
@@ -64,6 +65,24 @@ Peraturan huruf: gunakan ک (bukan ك), ݢ (bukan گ atau ڬ), ڤ (bukan پ), ڽ
 
 Pulangkan hasilnya sebagai fail CSV yang boleh dimuat turun dengan lajur yang sama. Selepas itu, senaraikan semua baris yang anda tandakan SALAH atau RAGU dalam bentuk jadual ringkas.
 ```
+
+## Bandingkan dengan eJawiMakmur (MUIP)
+
+[eJawiMakmur](https://play.google.com/store/apps/details?id=my.gov.muip.ejawi) ialah penukar Rumi→Jawi oleh Majlis Ugama Islam dan Adat Resam Melayu Pahang (MUIP) bersama Munsyi Jawi Pahang. Ia tidak menyediakan API awam, jadi EASY JAWI **tidak** disambungkan terus kepadanya. Sebaliknya, gunakan aplikasi atau laman web eJawiMakmur sebagai rujukan kedua:
+
+1. Buka `ejawimakmur/rumi-01.txt` (200 perkataan Rumi, satu sebaris). Salin semua.
+2. Tampal ke penukar Rumi→Jawi eJawiMakmur dan salin keseluruhan output Jawi.
+3. Simpan output itu sebagai fail teks, cth. `ejawimakmur/output-01.txt`, kemudian jalankan:
+
+   ```bash
+   npm run lexicon:compare-ejawi -- 01 docs/semakan/ejawimakmur/output-01.txt
+   ```
+
+   Atau hantar sahaja output itu kepada Claude untuk dibandingkan.
+4. Hasilnya `ejawimakmur/perbandingan-01.csv`: setiap perkataan ditanda `SAMA` atau `BERBEZA`. Perbezaan huruf yang setara (cth. ك lawan ک) diabaikan.
+5. Ulang untuk `rumi-02.txt` hingga `rumi-07.txt`.
+
+Perkataan `BERBEZA` tidak bermakna EASY JAWI salah, kerana penukar automatik juga boleh tersilap. Bawa senarai perbezaan kepada guru Jawi untuk keputusan muktamad.
 
 ## Selepas semakan
 

@@ -107,5 +107,17 @@ for (let i = 0; i < rows.length; i += CHUNK) {
   const n = String(i / CHUNK + 1).padStart(2, '0');
   writeFileSync(`${outDir}bahagian/bahagian-${n}.csv`, toCsv(rows.slice(i, i + CHUNK), i));
 }
+// Plain Rumi word lists (same order as the worksheets) to paste into an
+// external Rumi→Jawi converter such as eJawiMakmur; compare with
+// `npm run lexicon:compare-ejawi`.
+const ejDir = outDir + 'ejawimakmur/';
+mkdirSync(ejDir, { recursive: true });
+writeFileSync(ejDir + 'rumi-semua.txt', rows.map((r) => r.e.rumi).join('\n') + '\n');
+for (let i = 0; i < rows.length; i += CHUNK) {
+  const n = String(i / CHUNK + 1).padStart(2, '0');
+  writeFileSync(`${ejDir}rumi-${n}.txt`, rows.slice(i, i + CHUNK).map((r) => r.e.rumi).join('\n') + '\n');
+}
+writeFileSync(ejDir + 'urutan.json', JSON.stringify(rows.map((r) => r.e.id)) + '\n');
+
 const count = (l: Level) => rows.filter((r) => r.level === l).length;
 console.log(`${rows.length} baris: TINGGI ${count('TINGGI')}, SEDERHANA ${count('SEDERHANA')}, RENDAH ${count('RENDAH')}; ${Math.ceil(rows.length / CHUNK)} bahagian.`);
