@@ -2,6 +2,15 @@
 
 Fail dalam folder ini disediakan untuk menyemak ejaan Jawi dan makna **1,375 perkataan** dalam kamus permulaan EASY JAWI (`src/data/jawi-lexicon.json`). Semua perkataan **belum disemak oleh guru**.
 
+## Status semakan
+
+| Pusingan | Tarikh | Hasil |
+|---|---|---|
+| Semakan AI (ChatGPT), dinilai semula oleh Claude | 2026-11-16 | 1,291 BETUL · **9 ejaan dibetulkan** · 23 makna dikemas kini · **75 RAGU** (perlu guru). Rekod: `hasil/semakan-ai-chatgpt-2026-11-16.csv`, keputusan: `hasil/keputusan-2026-11-16.json` |
+| Pengesahan guru | — | Belum. Mulakan dengan **`untuk-guru.csv`** (84 perkataan: 9 yang dibetulkan + 75 RAGU). |
+
+Semakan baharu digunakan dengan `npm run lexicon:apply-review -- <fail.csv> [keputusan.json]`.
+
 ## Fail
 
 | Fail | Isi |

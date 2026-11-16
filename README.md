@@ -11,7 +11,7 @@ Permainan papan perkataan Jawi asli (genre Scrabble/Sahibba) untuk murid, guru d
 | UI responsif 360 → 1280px, PWA, bunyi, animasi | ✅ Siap & diuji (Playwright) |
 | Tutorial interaktif, Kamus, Sejarah, Mod Guru | ✅ Siap & diuji |
 | **Multiplayer 2–4 peranti** | ⏳ **Fasa 3 — belum dilaksana** (perlukan Firebase). Skrin Multiplayer memaparkan status jujur; butang bilik dimatikan. |
-| Kamus permulaan (1,375 perkataan, termasuk kata berimbuhan) | ⚠️ **BELUM DISEMAK GURU** |
+| Kamus permulaan (1,375 perkataan, termasuk kata berimbuhan) | ⚠️ Disemak AI (9 ejaan dibetulkan); **BELUM DISAHKAN GURU** — lihat `docs/semakan/untuk-guru.csv` |
 
 Butiran: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) · Senarai semak: [`docs/DELIVERY_CHECKLIST.md`](docs/DELIVERY_CHECKLIST.md)
 

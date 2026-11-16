@@ -1,6 +1,6 @@
 {
  "meta": {
-  "derivedFrom": "1373 perkataan unik dalam kamus permulaan",
+  "derivedFrom": "1375 perkataan unik dalam kamus permulaan",
   "method": "Bilangan jubin ∝ kekerapan huruf (largest remainder, min 1, maks 11); huruf perlu muncul dalam ≥ 10 perkataan. Nilai = 1 + round(log2(fmaks/f) × 1.25), had 1–10.",
   "disclaimer": "Taburan dan nilai jubin diterbitkan daripada korpus permulaan EASY JAWI. BUKAN nilai rasmi Sahibba. Boleh dikonfigurasi.",
   "totalLetterTiles": 86,
@@ -59,7 +59,7 @@
   },
   {
    "letter": "ڠ",
-   "count": 3,
+   "count": 4,
    "value": 3
   },
   {
@@ -119,7 +119,7 @@
   },
   {
    "letter": "ي",
-   "count": 8,
+   "count": 7,
    "value": 1
   },
   {

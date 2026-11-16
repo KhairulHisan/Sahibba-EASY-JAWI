@@ -34,6 +34,14 @@ describe('shipped starter lexicon integrity', () => {
     }
   });
 
+  it('records the review outcome on every entry, and corrected words are canonical', () => {
+    for (const e of entries) expect(['ai-ok', 'ai-fixed', 'ai-doubt', undefined]).toContain(e.review);
+    const fixed = entries.filter((e) => e.review === 'ai-fixed');
+    expect(fixed.map((e) => e.rumi).sort()).toEqual(['baring', 'bayar', 'dewasa', 'gamelan', 'kuih', 'matahari', 'membayar', 'syurga', 'tuang']);
+    expect(entries.find((e) => e.rumi === 'baring')!.jawi).not.toBe(entries.find((e) => e.rumi === 'barang')!.jawi);
+    expect(entries.find((e) => e.rumi === 'tuang')!.jawi).not.toBe(entries.find((e) => e.rumi === 'tong')!.jawi);
+  });
+
   it('uses canonical kaf/ga, never the folded variants', () => {
     const all = entries.map((e) => e.jawi).join('');
     expect(all).not.toMatch(/[كگڬیھ]/);

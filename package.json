@@ -16,7 +16,8 @@
     "tiles:derive": "tsx scripts/derive-tiles.ts",
     "build:embedded": "vite build --mode embedded && tsx scripts/build-embedded.ts",
     "lexicon:export-review": "tsx scripts/export-review.ts",
-    "lexicon:compare-ejawi": "tsx scripts/compare-ejawi.ts"
+    "lexicon:compare-ejawi": "tsx scripts/compare-ejawi.ts",
+    "lexicon:apply-review": "tsx scripts/apply-review.ts"
   },
   "dependencies": {
     "@fontsource/fredoka": "^5.2.8",

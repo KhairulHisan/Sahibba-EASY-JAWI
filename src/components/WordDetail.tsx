@@ -3,6 +3,12 @@ import { splitLetters } from '../engine/jawi';
 import { JawiText } from './JawiText';
 import { Sheet } from './Sheet';
 
+const REVIEW = {
+  'ai-ok': { label: 'Ejaan disemak (AI)', cls: 'bg-cream-200 text-ink-soft' },
+  'ai-fixed': { label: 'Ejaan dibetulkan selepas semakan', cls: 'bg-cream-200 text-ink-soft' },
+  'ai-doubt': { label: 'Ejaan perlu disahkan guru', cls: 'bg-coral-100 text-coral-700' },
+} as const;
+
 const DIFF_LABEL = { 1: 'Asas (Darjah 1–2)', 2: 'Sederhana (Darjah 3–4)', 3: 'Mencabar (Darjah 5–6)' } as const;
 
 /** Definition card: connected Jawi, Rumi, meaning, category, example. */
@@ -32,6 +38,7 @@ export function WordDetail({ word, lexicon, onClose }: { word: string | null; le
                 <span className="rounded-full bg-jade-100 px-2 py-1 text-jade-700">{CATEGORY_LABELS[e.category] ?? e.category}</span>
                 <span className="rounded-full bg-mango-100 px-2 py-1 text-mango-600">{DIFF_LABEL[e.difficulty]}</span>
                 {e.pack && e.pack !== 'teras' && <span className="rounded-full bg-navy-100 px-2 py-1 text-navy-800">Pek: {e.pack}</span>}
+                {e.review && <span className={`rounded-full px-2 py-1 ${REVIEW[e.review].cls}`}>{REVIEW[e.review].label}</span>}
               </div>
             </div>
           ))}

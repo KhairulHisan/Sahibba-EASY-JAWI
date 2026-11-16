@@ -19,6 +19,12 @@ export interface LexiconEntry {
   variants?: string[];
   /** Pack the entry came from ('teras' = shipped starter lexicon). */
   pack?: string;
+  /**
+   * Outcome of the latest (non-teacher) review round:
+   * 'ai-ok' = confirmed, 'ai-fixed' = spelling corrected, 'ai-doubt' = reviewer
+   * unsure — needs a teacher's decision. Absent = not reviewed yet.
+   */
+  review?: 'ai-ok' | 'ai-fixed' | 'ai-doubt';
 }
 
 export interface LexiconMeta {
