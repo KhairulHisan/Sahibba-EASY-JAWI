@@ -1,0 +1,14 @@
+node_modules
+dist
+dev-dist
+coverage
+test-results
+playwright-report
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.firebase
+firebase-debug.log
+firestore-debug.log
