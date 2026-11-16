@@ -1,11 +1,12 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
+import { useReduceMotion } from '../hooks/useReduceMotion';
 import { useMemo } from 'react';
 
 const COLORS = ['#f7b32b', '#1f9d74', '#ef6f5e', '#2a63a8', '#fdeac2'];
 
 /** Short (≈1.6 s) celebratory burst; disabled under reduced motion. */
 export function Confetti({ burstKey, pieces = 46 }: { burstKey: number; pieces?: number }) {
-  const reduce = useReducedMotion();
+  const reduce = useReduceMotion();
   const parts = useMemo(
     () =>
       Array.from({ length: pieces }, (_, i) => ({

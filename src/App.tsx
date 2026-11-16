@@ -53,6 +53,9 @@ export function App() {
   useEffect(() => {
     document.title = TITLES[route];
   }, [route]);
+  useEffect(() => {
+    document.documentElement.dataset.motion = motionPref;
+  }, [motionPref]);
   const Screen = SCREENS[route];
   return (
     <MotionConfig reducedMotion={motionPref === 'system' ? 'user' : motionPref === 'reduce' ? 'always' : 'never'}>

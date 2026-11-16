@@ -188,12 +188,13 @@ export function Board(props: BoardProps) {
       const nx = Math.min(size - 1, Math.max(0, focus.x + m[0]));
       const ny = Math.min(size - 1, Math.max(0, focus.y + m[1]));
       setFocus({ x: nx, y: ny });
-      requestAnimationFrame(() => viewport.current?.querySelector<HTMLElement>(`[data-x="${nx}"][data-y="${ny}"]`)?.focus());
+      // Focus synchronously so rapid key presses always target the right cell.
+      viewport.current?.querySelector<HTMLElement>(`[data-cell][data-x="${nx}"][data-y="${ny}"]`)?.focus();
     }
   };
 
   const waveDelay = new Map<number, number>();
-  wave?.order.forEach((k, i) => waveDelay.set(k, i * 0.045));
+  wave?.order.forEach((k, i) => waveDelay.set(k, i * 0.025));
 
   const rows = [];
   for (let y = 0; y < size; y++) {

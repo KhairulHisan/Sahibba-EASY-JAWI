@@ -71,7 +71,7 @@ Status setiap ciri: lihat [`DELIVERY_CHECKLIST.md`](./DELIVERY_CHECKLIST.md).
 1. **Rak kosong**: beg kosong DAN seorang pemain menggunakan jubin terakhirnya.
 2. **Tanpa mata**: `consecutiveScoreless ≥ 3 pusingan × bil. pemain aktif` (langkah 0 mata, tukar, langkau, tamat masa). Boleh dikonfigurasi `scorelessRoundsLimit`.
 3. **Menyerah**: tinggal ≤ 1 pemain aktif.
-- Setiap pemain aktif ditolak jumlah nilai jubin di rak **sekali sahaja** (`endPenalty`). Pemain yang menamatkan rak **tidak** menerima mata pihak lawan (keputusan reka bentuk; boleh ditukar).
+- Bagi penamat (1) dan (2), setiap pemain aktif ditolak jumlah nilai jubin di rak **sekali sahaja** (`endPenalty`). Kemenangan melalui (3) menyerah **tidak** menolak baki jubin. Pemain yang menamatkan rak **tidak** menerima mata pihak lawan (keputusan reka bentuk; boleh ditukar).
 - Pemenang = markah tertinggi di kalangan pemain aktif. Seri → **juara bersama** (`isTie`, `winners[]`). Pemain yang menyerah tidak boleh menang.
 
 ### 2.8 Mesin keadaan

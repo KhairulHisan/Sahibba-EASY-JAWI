@@ -171,7 +171,9 @@ function advanceTurn(s: GameState) {
 
 function finish(s: GameState, reason: EndReason, now: number) {
   for (const p of s.players) {
-    if (p.resigned) continue;
+    // Leftover tiles are deducted once when the game ends naturally. A win by
+    // resignation does not penalise the remaining player.
+    if (p.resigned || reason === 'resign') continue;
     const penalty = rackValue(p.rack);
     p.endPenalty = penalty;
     p.score -= penalty;

@@ -196,6 +196,9 @@ describe('game lifecycle', () => {
     two = act(two, { type: 'RESIGN', playerId: 'p1' });
     expect(two.phase).toBe('finished');
     expect(two.result).toMatchObject({ reason: 'resign', winners: ['p2'] });
+    // No leftover deduction on a resignation win.
+    expect(two.players[1]!.score).toBe(0);
+    expect(two.result?.finalScores.every((f) => f.penalty === 0)).toBe(true);
 
     let three = makeState([[tile('ب')], [tile('س')], [tile('ا')]]);
     const bagBefore = three.bag.length;

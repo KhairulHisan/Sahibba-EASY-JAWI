@@ -103,5 +103,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-soft { animation: none; }
+  :root:not([data-motion='full']) .animate-pulse-soft { animation: none; }
 }
+[data-motion='reduce'] .animate-pulse-soft { animation: none; }

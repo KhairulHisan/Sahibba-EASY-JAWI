@@ -39,7 +39,7 @@ export function TileFace({ letter, value, isBlank, size, selected, state = 'neut
       className={`relative grid h-full w-full select-none place-items-center ${isBlank ? 'tile-face-blank' : 'tile-face'} ${ring} ${dim ? 'opacity-40' : ''}`}
       style={{ borderRadius: Math.max(5, size * 0.16) }}
       animate={anim?.kind === 'wobble' ? { x: [0, -5, 5, -3, 3, 0] } : anim?.kind === 'wave' ? { scale: [1, 1.14, 1], y: [0, -3, 0] } : undefined}
-      transition={anim?.kind === 'wobble' ? { duration: 0.24 } : anim?.kind === 'wave' ? { duration: 0.3, delay: anim.delay ?? 0, ease: 'easeOut' } : undefined}
+      transition={anim?.kind === 'wobble' ? { duration: 0.24 } : anim?.kind === 'wave' ? { duration: 0.24, delay: anim.delay ?? 0, ease: 'easeOut' } : undefined}
     >
       <span
         lang="ms-Arab"

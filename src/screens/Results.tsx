@@ -57,7 +57,8 @@ export function Results() {
   }
 
   const persona = BOT_PERSONA[game.difficulty];
-  const ranked = [...game.players].sort((a, b) => b.score - a.score);
+  const rankOf = (id: string, resigned: boolean) => (result.winners.includes(id) ? 0 : resigned ? 2 : 1);
+  const ranked = [...game.players].sort((a, b) => rankOf(a.id, a.resigned) - rankOf(b.id, b.resigned) || b.score - a.score);
   const words = game.moves.filter((m) => m.type === 'play').flatMap((m) => m.words.map((w) => ({ ...w, playerId: m.playerId })));
   const best = [...words].filter((w) => w.playerId === HUMAN_ID).sort((a, b) => b.score - a.score)[0];
   const uniqueWords = [...new Set(words.map((w) => w.text))];

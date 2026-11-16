@@ -38,7 +38,7 @@ const TONE = {
 export function Toaster() {
   const items = useToasts((s) => s.items);
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-2 z-[60] flex flex-col items-center gap-2 px-3" aria-live="polite">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+4.25rem)] z-[60] flex flex-col items-center gap-2 px-3" aria-live="polite">
       <AnimatePresence>
         {items.map((t) => (
           <motion.div
