@@ -74,6 +74,14 @@ npx firebase-tools deploy --only hosting
 
 (Perlu `firebase.json` dengan `"public": "dist"` dan projek Firebase anda sendiri — belum disediakan dalam repo ini.) Vercel/Netlify: arahan binaan `npm run build`, direktori output `dist`. Laluan menggunakan `#hash`, jadi tiada peraturan rewrite diperlukan. Pengehosan mungkin dikenakan kos oleh penyedia.
 
+### Halaman tunggal (tanpa pelayan, tanpa service worker)
+
+```bash
+npm run build:embedded
+```
+
+Menghasilkan satu fail HTML dengan JS, CSS dan fon disertakan (`dist-embedded/easy-jawi.html`), sesuai untuk hos yang hanya menerima satu halaman. Dalam binaan ini, butang muat turun (CSV sejarah, templat guru) menyalin kandungan ke papan klip.
+
 ## Struktur
 
 ```

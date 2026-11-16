@@ -4,12 +4,18 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const embedded = mode === 'embedded';
+  return {
   base: './',
+  define: { 'import.meta.env.VITE_EMBEDDED': JSON.stringify(embedded ? '1' : '0') },
+  build: embedded
+    ? { outDir: 'dist-embedded', assetsInlineLimit: 100_000_000, cssCodeSplit: false, rollupOptions: { output: { inlineDynamicImports: true } } }
+    : undefined,
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    !embedded && VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['icons/icon.svg', 'icons/maskable.svg'],
@@ -44,4 +50,5 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 60_000,
   },
+  };
 });

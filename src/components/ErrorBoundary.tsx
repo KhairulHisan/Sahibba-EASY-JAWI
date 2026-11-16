@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
               className="btn-3d min-h-12 rounded-xl border-2 border-cream-300 bg-white px-5 font-display font-semibold"
               onClick={() => {
                 this.setState({ error: null });
-                window.location.hash = '#/main';
+                window.location.hash = '#main';
               }}
             >
               Laman utama

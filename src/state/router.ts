@@ -13,25 +13,26 @@ export type Route =
   | 'sejarah'
   | 'guru';
 
+/** Plain `#name` hashes (no slash) so links survive embedded viewers; `#/name` is still accepted. */
 const PATHS: Record<Route, string> = {
-  splash: '/',
-  home: '/main',
-  single: '/single',
-  game: '/permainan',
-  results: '/keputusan',
-  multi: '/multi',
-  tutorial: '/tutorial',
-  kamus: '/kamus',
-  tetapan: '/tetapan',
-  sejarah: '/sejarah',
-  guru: '/guru',
+  splash: '',
+  home: 'main',
+  single: 'single',
+  game: 'permainan',
+  results: 'keputusan',
+  multi: 'multi',
+  tutorial: 'tutorial',
+  kamus: 'kamus',
+  tetapan: 'tetapan',
+  sejarah: 'sejarah',
+  guru: 'guru',
 };
 
 const BY_PATH = new Map(Object.entries(PATHS).map(([r, p]) => [p, r as Route]));
 
 export function parseHash(hash: string): Route {
-  const path = hash.replace(/^#/, '').split('?')[0] || '/';
-  return BY_PATH.get(path) ?? 'home';
+  const path = hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+  return BY_PATH.get(path) ?? (path === '' ? 'splash' : 'home');
 }
 
 function subscribe(cb: () => void) {
@@ -45,7 +46,7 @@ export function useRoute(): Route {
 
 export function navigate(route: Route, opts: { replace?: boolean } = {}) {
   const target = '#' + PATHS[route];
-  if (window.location.hash === target) return;
+  if (window.location.hash === target || (target === '#' && !window.location.hash)) return;
   if (opts.replace) window.location.replace(target);
   else window.location.hash = target;
 }
