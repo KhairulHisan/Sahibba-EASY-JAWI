@@ -44,7 +44,7 @@ test.describe('tutorial, dictionary and teacher mode', () => {
     await page.getByRole('button', { name: 'Tutup' }).click();
     await page.getByTestId('dict-search').fill('');
     await page.getByRole('button', { name: 'Warna', exact: true }).click();
-    await expect(page.getByText('hasil')).toContainText('10 hasil');
+    await expect(page.getByText('hasil')).toContainText('11 hasil');
   });
 
   test('teacher import validates rows, saves a pack and the word becomes searchable', async ({ page }) => {

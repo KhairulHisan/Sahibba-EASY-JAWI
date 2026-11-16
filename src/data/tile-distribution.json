@@ -1,7 +1,7 @@
 {
  "meta": {
-  "derivedFrom": "530 perkataan unik dalam kamus permulaan",
-  "method": "Bilangan jubin ∝ kekerapan huruf (largest remainder, min 1, maks 11); huruf perlu muncul dalam ≥ 5 perkataan. Nilai = 1 + round(log2(fmaks/f) × 1.25), had 1–10.",
+  "derivedFrom": "1373 perkataan unik dalam kamus permulaan",
+  "method": "Bilangan jubin ∝ kekerapan huruf (largest remainder, min 1, maks 11); huruf perlu muncul dalam ≥ 10 perkataan. Nilai = 1 + round(log2(fmaks/f) × 1.25), had 1–10.",
   "disclaimer": "Taburan dan nilai jubin diterbitkan daripada korpus permulaan EASY JAWI. BUKAN nilai rasmi Sahibba. Boleh dikonfigurasi.",
   "totalLetterTiles": 86,
   "blanks": 2
@@ -9,7 +9,7 @@
  "tiles": [
   {
    "letter": "ا",
-   "count": 9,
+   "count": 8,
    "value": 1
   },
   {
@@ -35,7 +35,7 @@
   {
    "letter": "ح",
    "count": 1,
-   "value": 7
+   "value": 8
   },
   {
    "letter": "د",
@@ -50,12 +50,12 @@
   {
    "letter": "س",
    "count": 4,
-   "value": 3
+   "value": 2
   },
   {
    "letter": "ع",
    "count": 1,
-   "value": 7
+   "value": 8
   },
   {
    "letter": "ڠ",
@@ -85,7 +85,7 @@
   {
    "letter": "ݢ",
    "count": 2,
-   "value": 5
+   "value": 4
   },
   {
    "letter": "ل",
@@ -94,13 +94,13 @@
   },
   {
    "letter": "م",
-   "count": 4,
-   "value": 3
+   "count": 5,
+   "value": 2
   },
   {
    "letter": "ن",
-   "count": 4,
-   "value": 3
+   "count": 5,
+   "value": 2
   },
   {
    "letter": "و",
@@ -124,7 +124,7 @@
   },
   {
    "letter": "ڽ",
-   "count": 2,
+   "count": 1,
    "value": 7
   }
  ],

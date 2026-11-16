@@ -55,6 +55,8 @@ export const CATEGORY_LABELS: Record<string, string> = {
   perasaan: 'Perasaan & Nilai',
   umum: 'Umum',
   pekerjaan: 'Pekerjaan',
+  budaya: 'Agama & Budaya',
+  sukan: 'Sukan & Hobi',
 };
 
 /**

@@ -34,6 +34,28 @@ export interface GenerateOptions {
   maxCandidates?: number;
 }
 
+interface WordShape {
+  word: string;
+  letters: string[];
+  counts: Map<string, number>;
+}
+const SHAPES = new WeakMap<Lexicon, WordShape[]>();
+
+/** Per-lexicon cache of each playable word's letters and letter counts. */
+function wordShapes(lexicon: Lexicon): WordShape[] {
+  let shapes = SHAPES.get(lexicon);
+  if (!shapes) {
+    shapes = lexicon.playableWords.map((word) => {
+      const letters = splitLetters(word);
+      const counts = new Map<string, number>();
+      for (const l of letters) counts.set(l, (counts.get(l) ?? 0) + 1);
+      return { word, letters, counts };
+    });
+    SHAPES.set(lexicon, shapes);
+  }
+  return shapes;
+}
+
 export function generateMoves(state: GameState, playerIndex: number, lexicon: Lexicon, opts: GenerateOptions = {}): MoveCandidate[] {
   const player = state.players[playerIndex];
   if (!player || player.rack.length === 0) return [];
@@ -52,6 +74,26 @@ export function generateMoves(state: GameState, playerIndex: number, lexicon: Le
     if (t.isBlank) blanks.push(t);
     else realByLetter.set(t.letter, [...(realByLetter.get(t.letter) ?? []), t]);
   }
+
+  // Cheap feasibility prefilter: a word is only worth scanning if every letter
+  // it needs beyond the rack can come from a joker or (later moves) from a
+  // tile already on the board. Skips most of the dictionary on every turn.
+  const rackCount = new Map<string, number>();
+  for (const t of player.rack) if (!t.isBlank) rackCount.set(t.letter, (rackCount.get(t.letter) ?? 0) + 1);
+  const boardLetters = new Set<string>();
+  for (const c of board) if (c) boardLetters.add(c.letter);
+  const feasible = (counts: ReadonlyMap<string, number>, n: number): boolean => {
+    let deficit = 0;
+    let unreachable = 0;
+    for (const [l, c] of counts) {
+      const d = c - (rackCount.get(l) ?? 0);
+      if (d <= 0) continue;
+      deficit += d;
+      if (!boardLetters.has(l)) unreachable += d;
+    }
+    if (empty) return deficit <= blanks.length;
+    return unreachable <= blanks.length && deficit <= blanks.length + n - 1;
+  };
 
   const seen = new Set<string>();
   const out: MoveCandidate[] = [];
@@ -97,11 +139,10 @@ export function generateMoves(state: GameState, playerIndex: number, lexicon: Le
     out.push({ placements, words: ev.words, score: ev.score, mainWord: main.text, tilesUsed: placements.length, usesBlank });
   };
 
-  for (const word of lexicon.playableWords) {
+  for (const { letters, counts } of wordShapes(lexicon)) {
     if (out.length >= maxCandidates) break;
-    const letters = splitLetters(word);
     const n = letters.length;
-    if (n > size) continue;
+    if (n > size || !feasible(counts, n)) continue;
     // Horizontal: logical letter i sits at x = startX − i (right → left).
     for (let y = 0; y < size; y++) {
       for (let startX = n - 1; startX < size; startX++) {

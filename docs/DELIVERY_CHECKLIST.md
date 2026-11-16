@@ -71,6 +71,6 @@ Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59
 | Kod bilik | NOT IMPLEMENTED | Fasa 3 |
 
 ## Perlu tindakan luar
-1. **Semakan guru/DBP** untuk ejaan & makna 530 entri kamus dan polisi kanonik huruf (`BLUEPRINT.md §3`).
+1. **Semakan guru/DBP** untuk ejaan & makna 1,375 entri kamus (terutamanya ~250 kata berimbuhan) dan polisi kanonik huruf (`BLUEPRINT.md §3`).
 2. **Projek Firebase** (Auth tanpa nama, Firestore, Functions, Hosting) untuk Fasa 3 — mungkin dikenakan kos.
 3. Ujian pada peranti Android/iOS sebenar.

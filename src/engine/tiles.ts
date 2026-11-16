@@ -31,7 +31,7 @@ export interface DeriveOptions {
 export const DEFAULT_DERIVE_OPTIONS: DeriveOptions = {
   totalLetterTiles: 86,
   blanks: 2,
-  minWords: 5,
+  minWords: 10,
   maxPerLetter: 11,
   valueScale: 1.25,
 };

@@ -39,7 +39,7 @@ Status setiap ciri: lihat [`DELIVERY_CHECKLIST.md`](./DELIVERY_CHECKLIST.md).
 ### 2.3 Jubin
 - 7 jubin di rak. Jubin = huruf Jawi tunggal (bukan Rumi).
 - Taburan & nilai **diterbitkan daripada kekerapan huruf dalam korpus permulaan** (`npm run tiles:derive` → `src/data/tile-distribution.json`): 86 jubin huruf + 2 joker (nilai 0). **BUKAN nilai rasmi Sahibba.**
-  - Setiap huruf yang muncul dalam ≥ 5 perkataan mendapat ≥ 1 jubin; baki diagih ∝ kekerapan (kaedah baki terbesar, maks 11).
+  - Setiap huruf yang muncul dalam ≥ 10 perkataan mendapat ≥ 1 jubin; baki diagih ∝ kekerapan (kaedah baki terbesar, maks 11).
   - Nilai = `1 + round(log2(f_maks / f) × 1.25)`, had 1–10.
   - Huruf jarang (ة ث ذ ص ض ط ظ غ خ ز ش ۏ) tiada jubin — boleh dimainkan melalui **joker**.
 - Joker: pemain memilih huruf melalui dialog; bernilai 0; masih mencetuskan gandaan perkataan.
@@ -111,7 +111,7 @@ Fon: **Noto Naskh Arabic** (SIL OFL 1.1, via `@fontsource`) — disahkan meliput
 ## 4. Kamus
 
 - Fail: `src/data/jawi-lexicon.json` — `{ meta, entries: [{ id, jawi, rumi, meaningMs, category, difficulty, approved, sourceNote, example?, variants?, pack }] }`.
-- **530 entri permulaan**, 18 kategori, tahap 1–3. **Status: BELUM DISEMAK GURU** (`meta.reviewStatus = "pending-educator-review"`). Disusun oleh pembangun dengan bantuan AI merujuk prinsip Pedoman Umum Ejaan Jawi; definisi ditulis sendiri; tiada salinan kamus berhak cipta.
+- **1,375 entri permulaan** (v0.2.0), 20 kategori, tahap 1–3 — kata dasar, kata berimbuhan lazim (ber-, meN-, di-, ter-, pe-, -an) dan ~60 perkataan pendek 2–3 huruf yang memudahkan sambungan di papan. **Status: BELUM DISEMAK GURU** (`meta.reviewStatus = "pending-educator-review"`). Disusun oleh pembangun dengan bantuan AI merujuk prinsip Pedoman Umum Ejaan Jawi; definisi ditulis sendiri; tiada salinan kamus berhak cipta.
 - Validator, bot dan bantuan menggunakan **satu instans `Lexicon` yang sama** (entri `approved` sahaja).
 - **Laluan import guru** (CSV/JSON) dalam aplikasi (`#/guru`) + `npm run lexicon:validate`: normalisasi, huruf tidak dikenali + cadangan, pendua, berbilang perkataan, entri sedia ada — setiap baris ditolak diberi sebab.
 - Hala tuju: 500+ → 2,000+ entri disemak; pek mengikut Darjah/topik.
@@ -200,5 +200,6 @@ docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md
 | Bot | Carian penuh kamus × kedudukan, nilai sebenar | Bukan skrip |
 
 ### Batasan diketahui
-- Dengan 530 perkataan permulaan, papan cenderung "sesak" selepas ~60–80 jubin dan permainan tamat melalui had tanpa mata walaupun beg belum habis. Peluasan kamus (perkataan 2–3 huruf terutamanya) akan memperbaiki aliran.
+- Dengan 1,375 perkataan, simulasi bot lawan bot menggunakan 79–85 daripada 88 jubin dan beg habis dalam 7/8 permainan (dengan 530 perkataan: 52–81 jubin, beg habis 2/8). Penghujung permainan masih kerap tamat melalui had tanpa mata apabila rak tinggal huruf bernilai tinggi (ف ع ح ء ڽ).
+- Bot dikira pada utas utama (purata ~70 ms, maksimum ~250 ms pada desktop); telefon lama mungkin lebih perlahan. Pindahan ke Web Worker ialah langkah seterusnya jika perlu.
 - Bot single player berjalan di klien; rak bot boleh dilihat oleh pengguna teknikal dalam `localStorage`. Diterima untuk luar talian; multiplayer menyimpan rak di pelayan.
