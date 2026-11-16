@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionBar } from '../components/ActionBar';
 import { BlankPicker } from '../components/BlankPicker';
-import { Board, type DraftCell } from '../components/Board';
+import { Board } from '../components/Board';
 import { Button } from '../components/Button';
 import { GameHUD, type HudPlayer } from '../components/GameHUD';
 import { Icon } from '../components/Icon';
 import { JawiText } from '../components/JawiText';
+import { MenuItem } from '../components/MenuItem';
 import { ConfirmSheet, Sheet } from '../components/Sheet';
-import { TileFace } from '../components/Tile';
 import { TileRack } from '../components/TileRack';
 import { toast } from '../components/Toast';
 import { WordDetail } from '../components/WordDetail';
 import { WordPreview } from '../components/WordPreview';
-import { bonusAt, getLayout, idx } from '../engine/board';
+import { getLayout, idx } from '../engine/board';
 import type { MoveCandidate } from '../engine/bot';
-import { canSwap, evaluatePlay, lastPlayedWord } from '../engine/game';
-import type { Placement } from '../engine/types';
+import { evaluatePlay, lastPlayedWord } from '../engine/game';
 import {
   activeLexicon,
   passTurn,
@@ -26,7 +25,8 @@ import {
   swapTiles,
 } from '../features/single/controller';
 import { BOT_PERSONA, HINT_LIMIT, HUMAN_ID, orderedRack, useSingle } from '../features/single/store';
-import { useTileDrag, type DragSource, type DropTarget } from '../features/single/useTileDrag';
+import { SwapSheet } from '../features/play/SwapSheet';
+import { useTileTable } from '../features/play/useTileTable';
 import { useElementSize } from '../hooks/useElementSize';
 import { WIDE_LAYOUT, useMediaQuery } from '../hooks/useMediaQuery';
 import { fx } from '../lib/feedback';
@@ -77,16 +77,10 @@ function ActiveGame() {
   const persona = BOT_PERSONA[game.difficulty];
   const isYourTurn = game.phase === 'active' && game.currentPlayer === humanIdx;
 
-  const [selected, setSelected] = useState<string | null>(null);
-  const [blankFor, setBlankFor] = useState<{ tileId: string; x: number; y: number } | null>(null);
-  const [wobble, setWobble] = useState(0);
   const [wave, setWave] = useState<{ key: number; order: number[] } | null>(null);
   const [hint, setHint] = useState<MoveCandidate | null>(null);
-  const [hoverCell, setHoverCell] = useState<number | null>(null);
-  const [hoverRack, setHoverRack] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
-  const [swapSel, setSwapSel] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<null | 'resign' | 'pass'>(null);
   const [wordShown, setWordShown] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -102,27 +96,29 @@ function ActiveGame() {
   const wide = useMediaQuery(WIDE_LAYOUT);
   const timerOn = turnSeconds !== null && settings.timersAllowed;
 
-  // ---- derived -------------------------------------------------------------
-  const rackById = useMemo(() => new Map(human.rack.map((t) => [t.id, t])), [human.rack]);
-  // Drop draft entries that no longer match the rack/board (e.g. after reload).
-  const validDraft = useMemo(
-    () => draft.filter((p) => rackById.has(p.tileId) && !game.board[idx(layout.size, p.x, p.y)]),
-    [draft, rackById, game.board, layout.size],
-  );
+  // ---- table (draft, rack, drag & drop) — shared with multiplayer ---------
+  const clearHint = useCallback(() => setHint(null), []);
+  const table = useTileTable({
+    layout,
+    board: game.board,
+    rack: human.rack,
+    isYourTurn,
+    interactive: !paused && game.phase === 'active',
+    draft,
+    setDraft,
+    rackOrder,
+    setRackOrder,
+    scrollContainer: () => boardScroller.current,
+    onPlacedTileTap: (k) => {
+      const m = game.moves[game.board[k]!.moveIndex];
+      if (m?.words[0]) setWordShown(m.words[0].text);
+    },
+    onPlaced: clearHint,
+  });
+  const { rackById, validDraft, draftMap, rackTiles, selected, setSelected, wobble, hoverCell, hoverRack, drag, onCellActivate, recallOrShuffle } = table;
   useEffect(() => {
     if (validDraft.length !== draft.length) setDraft(validDraft);
   }, [validDraft, draft.length, setDraft]);
-
-  const draftMap = useMemo(() => {
-    const m = new Map<number, DraftCell>();
-    for (const p of validDraft) {
-      const t = rackById.get(p.tileId)!;
-      m.set(idx(layout.size, p.x, p.y), { tileId: t.id, letter: t.isBlank ? (p.letter ?? '') : t.letter, value: t.value, isBlank: t.isBlank });
-    }
-    return m;
-  }, [validDraft, rackById, layout.size]);
-  const draftIds = useMemo(() => new Set(validDraft.map((p) => p.tileId)), [validDraft]);
-  const rackTiles = useMemo(() => orderedRack(human.rack, rackOrder).filter((t) => !draftIds.has(t.id)), [human.rack, rackOrder, draftIds]);
 
   const evaluation = useMemo(
     () => (validDraft.length && isYourTurn ? evaluatePlay(game, humanIdx, validDraft, lexicon) : null),
@@ -150,126 +146,10 @@ function ActiveGame() {
     { id: botPlayer.id, name: persona.name, initial: persona.initial, tone: persona.tone, isYou: false },
   ];
 
-  // ---- tile movement ------------------------------------------------------
-  const placeTile = useCallback(
-    (tileId: string, x: number, y: number, letter?: string) => {
-      if (!isYourTurn) return;
-      const k = idx(layout.size, x, y);
-      const occupant = draftMap.get(k);
-      if (game.board[k] || (occupant && occupant.tileId !== tileId)) {
-        fx('word-invalid');
-        setWobble((w) => w + 1);
-        return;
-      }
-      const tile = rackById.get(tileId);
-      if (!tile) return;
-      // A joker moved from one cell to another keeps the letter already chosen.
-      letter ??= validDraft.find((p) => p.tileId === tileId)?.letter;
-      if (tile.isBlank && !letter) {
-        setBlankFor({ tileId, x, y });
-        return;
-      }
-      const next: Placement[] = [...validDraft.filter((p) => p.tileId !== tileId), { tileId, x, y, ...(tile.isBlank ? { letter } : {}) }];
-      setDraft(next);
-      setSelected(null);
-      setHint(null);
-      fx('tile-drop');
-      if (bonusAt(layout, x, y)) window.setTimeout(() => fx('bonus-cell'), 90);
-    },
-    [isYourTurn, layout, draftMap, game.board, rackById, validDraft, setDraft],
-  );
-
-  const returnToRack = useCallback(
-    (tileId: string, index?: number) => {
-      const wasDraft = draftIds.has(tileId);
-      if (wasDraft) setDraft(validDraft.filter((p) => p.tileId !== tileId));
-      if (index !== undefined) {
-        const visible = rackTiles.map((t) => t.id).filter((id) => id !== tileId);
-        const from = rackTiles.findIndex((t) => t.id === tileId);
-        const at = from >= 0 && from < index ? index - 1 : index;
-        visible.splice(Math.max(0, Math.min(visible.length, at)), 0, tileId);
-        setRackOrder([...visible, ...[...draftIds].filter((id) => id !== tileId)]);
-      }
-      fx('tile-snap');
-    },
-    [draftIds, validDraft, rackTiles, setDraft, setRackOrder],
-  );
-
-  const onDrop = useCallback(
-    (src: DragSource, target: DropTarget) => {
-      if (target.kind === 'cell') {
-        if (!isYourTurn) {
-          toast({ tone: 'navy', content: 'Tunggu giliran anda dahulu.' });
-          return;
-        }
-        placeTile(src.tileId, target.x, target.y);
-      } else if (target.kind === 'rack') returnToRack(src.tileId, target.index);
-    },
-    [isYourTurn, placeTile, returnToRack],
-  );
-  const onTap = useCallback(
-    (src: DragSource) => {
-      if (src.from === 'board') {
-        returnToRack(src.tileId);
-        return;
-      }
-      fx('tile-pickup');
-      setSelected((s) => (s === src.tileId ? null : src.tileId));
-    },
-    [returnToRack],
-  );
-  const drag = useTileDrag({
-    onDrop,
-    onTap,
-    onHover: (t) => {
-      setHoverCell(t.kind === 'cell' ? idx(layout.size, t.x, t.y) : null);
-      setHoverRack(t.kind === 'rack');
-    },
-    disabled: paused || game.phase !== 'active',
-    scrollContainer: () => boardScroller.current,
-  });
-
-  const onCellActivate = (x: number, y: number) => {
-    const k = idx(layout.size, x, y);
-    const d = draftMap.get(k);
-    if (d) {
-      returnToRack(d.tileId);
-      return;
-    }
-    if (game.board[k]) {
-      // Tap a placed tile → show the word through it.
-      const m = game.moves[game.board[k]!.moveIndex];
-      if (m?.words[0]) setWordShown(m.words[0].text);
-      return;
-    }
-    if (!isYourTurn) {
-      toast({ tone: 'navy', content: 'Menunggu pemain… bukan giliran anda.' });
-      return;
-    }
-    if (selected) placeTile(selected, x, y);
-    else if (rackTiles.length) toast({ tone: 'navy', content: 'Pilih jubin dari rak dahulu, kemudian ketik petak.' }, 1800);
-  };
-
-  // ---- actions ------------------------------------------------------------
-  const recallOrShuffle = () => {
-    if (validDraft.length) {
-      setDraft([]);
-      fx('tile-snap');
-      return;
-    }
-    const ids = rackTiles.map((t) => t.id);
-    for (let i = ids.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [ids[i], ids[j]] = [ids[j]!, ids[i]!];
-    }
-    setRackOrder(ids);
-    fx('tile-shuffle');
-  };
-
   const onSubmit = () => {
     const res = submitPlay();
     if (!res.ok) {
-      setWobble((w) => w + 1);
+      table.bumpWobble();
       fx('word-invalid');
       toast({ tone: 'coral', content: res.error.message }, 3200);
     } else setSelected(null);
@@ -420,8 +300,6 @@ function ActiveGame() {
 
   // ---- layout sizes -----------------------------------------------------------
   const tileSize = Math.max(44, Math.min(62, Math.floor(((rackSize.width || 340) - 16 - 6 * 6) / 7)));
-  const dragTile = drag.visual ? rackById.get(drag.visual.tileId) : null;
-  const dragLetter = dragTile ? (dragTile.isBlank ? (validDraft.find((p) => p.tileId === dragTile.id)?.letter ?? '') : dragTile.letter) : '';
   const hintLimit = HINT_LIMIT[game.difficulty];
   const hintsLeft = hintLimit === null ? null : Math.max(0, hintLimit - hintsUsed);
 
@@ -496,7 +374,7 @@ function ActiveGame() {
             tiles={rackTiles}
             selectedId={selected}
             bindTile={(id, size) => drag.bind({ tileId: id, from: 'rack' }, size)}
-            onKeyActivate={(id) => onTap({ tileId: id, from: 'rack' })}
+            onKeyActivate={(id) => table.onTap({ tileId: id, from: 'rack' })}
             tileSize={tileSize}
             showNames={settings.showLetterNames}
             disabled={game.phase !== 'active'}
@@ -519,7 +397,6 @@ function ActiveGame() {
               icon: 'swap',
               onClick: () => {
                 setDraft([]);
-                setSwapSel(new Set());
                 setSwapOpen(true);
               },
               disabled: !isYourTurn || paused,
@@ -549,86 +426,30 @@ function ActiveGame() {
       </div>
 
       {/* Drag ghost */}
-      {drag.visual && dragTile && (
-        <div ref={drag.ghostRef} className="pointer-events-none fixed top-0 left-0 z-[70] drop-shadow-xl" style={{ width: drag.visual.size, height: drag.visual.size }} aria-hidden="true">
-          <TileFace letter={dragLetter} value={dragTile.value} isBlank={dragTile.isBlank} size={drag.visual.size} selected />
-        </div>
-      )}
+      {table.ghost}
 
       <BlankPicker
-        open={!!blankFor}
-        onCancel={() => setBlankFor(null)}
-        onPick={(letter) => {
-          const b = blankFor!;
-          setBlankFor(null);
-          placeTile(b.tileId, b.x, b.y, letter);
-        }}
+        open={!!table.blankFor}
+        onCancel={() => table.setBlankFor(null)}
+        onPick={table.pickBlankLetter}
       />
 
-      <Sheet open={swapOpen} onClose={() => setSwapOpen(false)} title="Tukar jubin">
-        {canSwap(game, 1) ? (
-          <>
-            <p className="mb-3 text-sm text-ink-soft">Pilih jubin untuk dipulangkan ke beg. Menukar jubin menamatkan giliran anda (0 mata).</p>
-            <div className="mb-4 flex flex-wrap justify-center gap-2" role="group" aria-label="Pilih jubin untuk ditukar">
-              {orderedRack(human.rack, rackOrder).map((t) => {
-                const on = swapSel.has(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    aria-pressed={on}
-                    aria-label={`${t.isBlank ? 'Joker' : t.letter}${on ? ', dipilih' : ''}`}
-                    onClick={() => {
-                      const n = new Set(swapSel);
-                      if (on) n.delete(t.id);
-                      else n.add(t.id);
-                      setSwapSel(n);
-                    }}
-                    className={`size-14 rounded-xl transition-transform ${on ? '-translate-y-1.5' : ''}`}
-                    data-testid="swap-tile"
-                  >
-                    <TileFace letter={t.letter} value={t.value} isBlank={t.isBlank} size={56} selected={on} />
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex gap-2">
-              <Button tone="cream" className="flex-1" onClick={() => setSwapSel(new Set(human.rack.map((t) => t.id)))}>
-                Pilih semua
-              </Button>
-              <Button
-                tone="jade"
-                className="flex-1"
-                disabled={swapSel.size === 0 || !canSwap(game, swapSel.size)}
-                onClick={() => {
-                  const res = swapTiles([...swapSel]);
-                  setSwapOpen(false);
-                  if (!res.ok) toast({ tone: 'coral', content: res.error.message });
-                }}
-                data-testid="confirm-swap"
-              >
-                Tukar {swapSel.size || ''} jubin
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div>
-            <p className="mb-4 text-ink-soft">
-              Beg tinggal <b>{game.bag.length}</b> jubin. Tukar jubin hanya dibenarkan apabila beg ada sekurang-kurangnya <b>{game.rules.minBagForSwap}</b> jubin.
-            </p>
-            <Button
-              tone="navy"
-              className="w-full"
-              onClick={() => {
-                setSwapOpen(false);
-                setConfirm('pass');
-              }}
-            >
-              Langkau giliran sahaja
-            </Button>
-          </div>
-        )}
-      </Sheet>
+      <SwapSheet
+        open={swapOpen}
+        onClose={() => setSwapOpen(false)}
+        tiles={orderedRack(human.rack, rackOrder)}
+        bagCount={game.bag.length}
+        minBagForSwap={game.rules.minBagForSwap}
+        onSwap={(ids) => {
+          const res = swapTiles(ids);
+          setSwapOpen(false);
+          if (!res.ok) toast({ tone: 'coral', content: res.error.message });
+        }}
+        onPassInstead={() => {
+          setSwapOpen(false);
+          setConfirm('pass');
+        }}
+      />
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Menu permainan">
         <div className="grid gap-2">
@@ -693,22 +514,5 @@ function ActiveGame() {
       />
       <WordDetail word={wordShown} lexicon={lexicon} onClose={() => setWordShown(null)} />
     </div>
-  );
-}
-
-function MenuItem({ icon, label, onClick, disabled, tone }: { icon: Parameters<typeof Icon>[0]['name']; label: string; onClick: () => void; disabled?: boolean; tone?: 'coral' }) {
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        fx('button-tap');
-        onClick();
-      }}
-      disabled={disabled}
-      className={`flex min-h-12 items-center gap-3 rounded-xl border-2 border-cream-300 bg-white px-4 text-left font-semibold hover:bg-cream-100 disabled:opacity-45 ${tone === 'coral' ? 'text-coral-700' : 'text-ink'}`}
-    >
-      <Icon name={icon} />
-      {label}
-    </button>
   );
 }

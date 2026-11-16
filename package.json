@@ -20,6 +20,7 @@
     "lexicon:apply-review": "tsx scripts/apply-review.ts",
     "functions:build": "npm --prefix functions run build",
     "test:emulator": "npm run functions:build && firebase emulators:exec --only auth,firestore,functions --project demo-easy-jawi \"vitest run --config vitest.emulator.config.ts\"",
+    "test:e2e:mp": "npm run functions:build && firebase emulators:exec --only auth,firestore,functions --project demo-easy-jawi \"playwright test -c playwright.mp.config.ts --trace off\"",
     "emulators": "npm run functions:build && firebase emulators:start --only auth,firestore,functions --project demo-easy-jawi"
   },
   "dependencies": {

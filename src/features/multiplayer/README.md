@@ -1,9 +1,9 @@
-# Multiplayer — Fasa 3 (belum dilaksana)
+# Multiplayer (klien)
 
-Tiada kod rangkaian di sini lagi; skrin `#/multi` memaparkan status jujur.
+- `MultiplayerHome` — CIPTA / SERTAI bilik (kod 4 digit sebagai string), sambung semula.
+- `RoomScreen` (`#bilik`) — memuat bilik, memilih paparan: menunggu kelulusan, `Lobby`, `MultiplayerTable`, tamat tempoh, ralat.
+- `useRoom` — pendengar Firestore (bilik awam + rak sendiri) dan heartbeat (kehadiran + ofset jam pelayan).
+- `api` — panggilan Cloud Functions; tindakan permainan dicuba semula dengan `actionId` yang sama (idempotensi).
+- `session` — `roomId`, draf, susunan rak dan kiraan bantuan disimpan setempat (bukan sumber kebenaran).
 
-Rancangan (lihat `docs/BLUEPRINT.md §6`):
-- `lib/firebase.ts` — init Auth tanpa nama + Firestore (konfigurasi melalui `VITE_FIREBASE_*`, bukan rahsia).
-- `functions/` — Callable `createRoom, joinRoom, approveJoin, setReady, startGame, submitMove, swapTiles, passTurn, resign, reconnect, leaveRoom` + berjadual `closeExpiredRooms`. Setiap satu memanggil `applyAction()` daripada `src/engine/game.ts` di dalam transaksi Firestore dengan `expectedVersion` dan `action.id` (idempotensi).
-- `firestore.rules` — tolak secara lalai; `privateHands/{uid}` hanya boleh dibaca pemilik; klien tidak menulis keadaan permainan.
-- Ujian Emulator Suite berbilang klien (kod `0427` kekal 4 digit, pemain ke-5 ditolak, cubaan semula tidak skor dua kali).
+Pelayan berwibawa: `functions/src/rooms.ts`. Kontrak: `src/multiplayer/protocol.ts`. Deploy: `docs/DEPLOY.md`.

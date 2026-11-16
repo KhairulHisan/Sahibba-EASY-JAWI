@@ -395,6 +395,7 @@ const BoardCellView = memo(function BoardCellView(p: CellProps) {
       data-cell=""
       data-x={x}
       data-y={y}
+      data-placed={placed ? '' : undefined}
       tabIndex={p.focused ? 0 : -1}
       aria-label={aria}
       onFocus={() => p.onFocusCell(x, y)}

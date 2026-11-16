@@ -14,7 +14,14 @@ export interface Repo {
   run<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
   /** Room ids whose expiresAt is in the past and status is still active. */
   findExpiredRoomIds(now: number, limit: number): Promise<string[]>;
+  /** Finished or expired rooms whose expiresAt is before `before`. */
+  findPurgeableRoomIds(before: number, limit: number): Promise<string[]>;
+  /** Delete a room for good: room, racks, move log and server state. */
+  purgeRoom(roomId: string): Promise<void>;
 }
+
+export const ACTIVE_STATUSES = ['menunggu', 'sedia', 'bermain'] as const;
+export const CLOSED_STATUSES = ['tamat', 'tamat-tempoh'] as const;
 
 export interface RandomSource {
   /** Uniform integer in [0, max). Must be cryptographically strong in production. */
@@ -59,15 +66,29 @@ export class MemoryRepo implements Repo {
     return result;
   }
 
-  async findExpiredRoomIds(now: number, limit: number): Promise<string[]> {
+  private roomsWhere(statuses: readonly string[], before: number, limit: number): string[] {
     const out: string[] = [];
     for (const [path, doc] of this.docs) {
       const m = /^rooms\/([^/]+)$/.exec(path);
       const room = doc as { expiresAt?: number; status?: string };
-      if (m && room.expiresAt !== undefined && room.expiresAt < now && ['menunggu', 'sedia', 'bermain'].includes(room.status ?? '')) out.push(m[1]!);
+      if (m && room.expiresAt !== undefined && room.expiresAt < before && statuses.includes(room.status ?? '')) out.push(m[1]!);
       if (out.length >= limit) break;
     }
     return out;
+  }
+
+  async findExpiredRoomIds(now: number, limit: number): Promise<string[]> {
+    return this.roomsWhere(ACTIVE_STATUSES, now, limit);
+  }
+
+  async findPurgeableRoomIds(before: number, limit: number): Promise<string[]> {
+    return this.roomsWhere(CLOSED_STATUSES, before, limit);
+  }
+
+  async purgeRoom(roomId: string): Promise<void> {
+    for (const path of [...this.docs.keys()]) {
+      if (path === `rooms/${roomId}` || path.startsWith(`rooms/${roomId}/`) || path === `serverState/${roomId}`) this.docs.delete(path);
+    }
   }
 }
 

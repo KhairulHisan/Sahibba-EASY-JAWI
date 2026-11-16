@@ -25,7 +25,7 @@ import {
   type RoomErrorReason,
   type RoomSettings,
 } from '../../src/multiplayer/protocol';
-import type { RandomSource, Repo, Tx } from './repo';
+import { ACTIVE_STATUSES, type RandomSource, type Repo, type Tx } from './repo';
 
 export type ErrorStatus = 'invalid-argument' | 'failed-precondition' | 'permission-denied' | 'not-found' | 'resource-exhausted' | 'already-exists';
 
@@ -134,7 +134,7 @@ function parseTileIds(v: unknown): string[] {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ACTIVE = new Set(['menunggu', 'sedia', 'bermain']);
+const ACTIVE = new Set<string>(ACTIVE_STATUSES);
 const isActive = (room: RoomDoc, now: number) => ACTIVE.has(room.status) && room.expiresAt > now;
 
 function readers(room: RoomDoc): string[] {
@@ -609,6 +609,13 @@ export async function leaveRoom(ctx: Ctx, input: unknown): Promise<{ ok: true }>
 }
 
 /** Scheduled sweep: mark rooms past their expiry as "tamat-tempoh" and free their codes. */
+/** Permanently delete rooms that closed more than `purgeAfterMs` ago. */
+export async function purgeOldRooms(repo: Repo, now: number): Promise<number> {
+  const ids = await repo.findPurgeableRoomIds(now - MP_TIMING.purgeAfterMs, 100);
+  for (const id of ids) await repo.purgeRoom(id);
+  return ids.length;
+}
+
 export async function expireRooms(repo: Repo, now: number): Promise<number> {
   const ids = await repo.findExpiredRoomIds(now, 200);
   let n = 0;

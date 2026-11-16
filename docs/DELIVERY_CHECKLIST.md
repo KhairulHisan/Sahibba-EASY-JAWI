@@ -1,9 +1,9 @@
-# Senarai Semak Penghantaran — EASY JAWI (Fasa 0–2, 4, 5 sebahagian)
+# Senarai Semak Penghantaran — EASY JAWI (Single Player + Multiplayer)
 
 Tarikh: 2026-11-16. Persekitaran ujian: Node 22, Chromium headless (Playwright 1.63), Linux.
 **PASS** = ujian automatik lulus (rujukan diberi) atau semakan tangkapan skrin yang dinyatakan. **NOT TESTED** = dilaksana tetapi tidak disahkan. **NOT IMPLEMENTED** = belum dibina.
 
-Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59 lulus, 9 dilangkau dengan sengaja** (ujian seret tetikus / papan kekunci hanya pada desktop; permainan penuh UI sekali pada desktop).
+Keputusan terkini: `npm test` → **93/93 lulus** · `npm run test:e2e` → **67 lulus, 21 dilangkau dengan sengaja** (seret tetikus / papan kekunci / pemasa / permainan penuh hanya pada projek desktop) · `npm run test:emulator` → **9/9 lulus** · `npm run test:e2e:mp` → **4/4 lulus**.
 
 ## A. Single Player
 | Fungsi | Status | Bukti |
@@ -45,9 +45,33 @@ Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59
 | Tukar/langkau, beg hampir kosong, penalti baki sekali, seri juara bersama, menyerah (tiada penalti) | PASS | `score-game.test.ts` |
 
 ## E. Multiplayer
-| Fungsi | Status |
-|---|---|
-| Kod 4 digit, 2–4 pemain, rak peribadi, pengesahan pelayan, sambung semula, pindah hos | **NOT IMPLEMENTED** (Fasa 3). Reka bentuk: `BLUEPRINT.md §6`. Butang bilik dimatikan dan diterangkan — `screens.spec.ts` menyemak ia `disabled`. |
+Diuji terhadap **Firebase Emulator Suite** (Auth, Firestore, Functions sebenar) — belum pada projek Firebase sebenar.
+
+| Fungsi | Status | Bukti |
+|---|---|---|
+| Hos cipta kod 4 digit, sifar di hadapan kekal (`0427`, `0007`) sebagai string | PASS | `multiplayer.test.ts` (unit), `functions.test.ts`, `e2e-mp` |
+| Kod sedang digunakan ditolak; kod dilepaskan sebaik permainan tamat | PASS | `functions.test.ts`; `e2e-mp` "host approval…", "whole game…" |
+| 2–4 pemain sertai; nama sama dijadikan unik (`Ali 2`); pemain ke-5 ditolak; kod salah ditolak | PASS | `e2e-mp` "four devices…" (5 konteks pelayar) |
+| Kelulusan hos (lulus / tolak) | PASS | `e2e-mp` "host approval…" |
+| Tetapan bilik dilihat semua; tukar tetapan batalkan SEDIA; dikunci selepas MULA | PASS | `e2e-mp`; unit |
+| Status menunggu → sedia → bermain → tamat / tamat tempoh | PASS | unit + `e2e-mp` (label status lobi) |
+| Hanya hos boleh MULA, hanya apabila semua SEDIA | PASS | `functions.test.ts`; `e2e-mp` |
+| Rak peribadi: rak orang lain & `serverState` → `permission-denied`; id jubin tiada dalam dokumen awam | PASS | `functions.test.ts`, `rules.test.ts` |
+| Setiap langkah disahkan pelayan; salah giliran ditolak; cubaan semula tidak dikira dua kali | PASS | `functions.test.ts` (`duplicate: true`); unit |
+| Papan, markah, beg & giliran segerak pada 4 peranti | PASS | `e2e-mp` "four devices…" |
+| Sambung semula selepas muat semula (uid, rak, papan sama) | PASS | `e2e-mp` |
+| Langkau, menyerah, keluar = menyerah; pemain lain meneruskan | PASS | `e2e-mp`; unit |
+| Pemasa giliran pelayan → langkau automatik (tepat sekali) | PASS | `e2e-mp` "turn timer…" (60 s sebenar) |
+| Pindah hos apabila hos terputus > 90 s | PASS (unit) | `multiplayer.test.ts`; tidak diuji dalam pelayar (perlu menunggu 90 s) |
+| Pemain terputus > 2 min dilangkau (tanpa pemasa) | PASS (unit) | `multiplayer.test.ts` |
+| Keputusan akhir pada semua peranti + disimpan dalam Sejarah | PASS | `e2e-mp` "whole game…" |
+| Bilik lama dipadam kekal (rak, log, nama panggilan) | PASS | `multiplayer.test.ts`, `tests/emulator/purge.test.ts` |
+| Had kadar cipta/sertai | PASS (unit) | `multiplayer.test.ts` |
+| Paparan 360px & 1280px (lobi, meja 4 pemain, keputusan) | PASS (manual) | Tangkapan skrin Chromium |
+| Deploy ke projek Firebase sebenar, kependaman rangkaian sebenar, peranti sebenar | NOT TESTED | Perlu projek Firebase pengguna — `docs/DEPLOY.md` |
+| App Check | NOT IMPLEMENTED | Disyorkan dalam `DEPLOY.md §5` |
+| Main semula dalam bilik yang sama | NOT IMPLEMENTED | Cipta bilik baharu (kod boleh diguna semula serta-merta) |
+| Binaan halaman tunggal (artifak) | Multiplayer dimatikan dengan jujur | Tiada konfigurasi Firebase dalam binaan itu |
 
 ## F. Responsif & kebolehcapaian
 | Fungsi | Status | Bukti |
@@ -70,9 +94,8 @@ Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59
 | Pemasa giliran (berasaskan tarikh akhir) & tamat masa → langkau | PASS | `gameplay.spec.ts` "turn timer runs out" (jam palsu Playwright) |
 | Bunyi boleh didengar | NOT TESTED | 22 bunyi disintesis; kod dijalankan tanpa ralat, output audio tidak boleh disahkan secara headless |
 | Getaran | NOT TESTED | `navigator.vibrate`, boleh dimatikan |
-| Kod bilik | NOT IMPLEMENTED | Fasa 3 |
 
 ## Perlu tindakan luar
 1. **Semakan guru/DBP** untuk ejaan & makna 1,375 entri kamus (terutamanya ~250 kata berimbuhan) dan polisi kanonik huruf (`BLUEPRINT.md §3`).
-2. **Projek Firebase** (Auth tanpa nama, Firestore, Functions, Hosting) untuk Fasa 3 — mungkin dikenakan kos.
+2. **Projek Firebase anda sendiri** (Auth tanpa nama, Firestore, Functions pada pelan Blaze, Hosting) untuk menghidupkan Multiplayer — ikut `docs/DEPLOY.md`; mungkin dikenakan kos.
 3. Ujian pada peranti Android/iOS sebenar.

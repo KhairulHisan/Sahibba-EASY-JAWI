@@ -11,6 +11,7 @@ import { Dictionary } from './screens/Dictionary';
 import { GameScreen } from './screens/GameScreen';
 import { HistoryScreen } from './screens/History';
 import { Home } from './screens/Home';
+import { RoomScreen } from './features/multiplayer/RoomScreen';
 import { Multiplayer } from './screens/Multiplayer';
 import { Results } from './screens/Results';
 import { SettingsScreen } from './screens/Settings';
@@ -25,6 +26,7 @@ const SCREENS: Record<Route, () => React.ReactNode> = {
   game: GameScreen,
   results: Results,
   multi: Multiplayer,
+  bilik: RoomScreen,
   tutorial: Tutorial,
   kamus: Dictionary,
   tetapan: SettingsScreen,
@@ -39,6 +41,7 @@ const TITLES: Record<Route, string> = {
   game: 'Permainan — EASY JAWI',
   results: 'Keputusan — EASY JAWI',
   multi: 'Multiplayer — EASY JAWI',
+  bilik: 'Bilik — EASY JAWI',
   tutorial: 'Cara Bermain — EASY JAWI',
   kamus: 'Kamus Jawi — EASY JAWI',
   tetapan: 'Tetapan — EASY JAWI',

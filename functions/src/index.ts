@@ -5,43 +5,18 @@
  */
 import { randomBytes, randomInt } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app';
-import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
-import type { RandomSource, Repo, Tx } from './repo';
+import { FirestoreRepo } from './firestoreRepo';
+import type { RandomSource } from './repo';
 import * as rooms from './rooms';
 
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 });
 initializeApp();
 const db = getFirestore();
 db.settings({ ignoreUndefinedProperties: true });
-
-class FirestoreRepo implements Repo {
-  constructor(private readonly fs: Firestore) {}
-
-  run<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
-    return this.fs.runTransaction(async (t) =>
-      fn({
-        get: async <U>(path: string) => {
-          const snap = await t.get(this.fs.doc(path));
-          return snap.exists ? (snap.data() as U) : null;
-        },
-        set: (path, data) => {
-          t.set(this.fs.doc(path), data as FirebaseFirestore.DocumentData);
-        },
-        delete: (path) => {
-          t.delete(this.fs.doc(path));
-        },
-      }),
-    );
-  }
-
-  async findExpiredRoomIds(now: number, limit: number): Promise<string[]> {
-    const snap = await this.fs.collection('rooms').where('status', 'in', ['menunggu', 'sedia', 'bermain']).where('expiresAt', '<', now).limit(limit).get();
-    return snap.docs.map((d) => d.id);
-  }
-}
 
 const repo = new FirestoreRepo(db);
 
@@ -78,7 +53,10 @@ export const claimTimeout = callable(rooms.claimTimeout);
 export const heartbeat = callable(rooms.heartbeat);
 export const leaveRoom = callable(rooms.leaveRoom);
 
+/** Close idle rooms, and delete closed rooms (nicknames, racks, move logs) once they are old. */
 export const closeExpiredRooms = onSchedule('every 30 minutes', async () => {
-  const n = await rooms.expireRooms(repo, Date.now());
-  console.log(`closeExpiredRooms: ${n} bilik ditutup`);
+  const now = Date.now();
+  const closed = await rooms.expireRooms(repo, now);
+  const purged = await rooms.purgeOldRooms(repo, now);
+  console.log(`closeExpiredRooms: ${closed} bilik ditutup, ${purged} bilik lama dipadam`);
 });

@@ -14,7 +14,7 @@ Status setiap ciri: lihat [`DELIVERY_CHECKLIST.md`](./DELIVERY_CHECKLIST.md).
 | Pengguna | Murid sekolah rendah Malaysia, guru, keluarga |
 | Bahasa UI | Bahasa Melayu Malaysia (Rumi); kandungan permainan dalam Jawi |
 | Platform | PWA responsif (360px → desktop), boleh dipasang & dimainkan luar talian |
-| Mod | **Single Player** (manusia lawan bot MUDAH/SEDERHANA/SUKAR) — *siap*. **Multiplayer** 2–4 peranti — *Fasa 3, perlukan Firebase* |
+| Mod | **Single Player** (manusia lawan bot MUDAH/SEDERHANA/SUKAR) — *siap*. **Multiplayer** 2–4 peranti — *siap, perlukan projek Firebase (lihat §6, `DEPLOY.md`)* |
 | Stack | React 19 + TypeScript + Vite 7, Tailwind CSS 4, Zustand 5, Motion 12, Web Audio API, vite-plugin-pwa |
 | Enjin | TypeScript tulen (`src/engine/*`) tanpa DOM — boleh dijalankan sama di pelayar dan Cloud Functions |
 
@@ -136,31 +136,53 @@ Fon: **Noto Naskh Arabic** (SIL OFL 1.1, via `@fontsource`) — disahkan meliput
 
 ---
 
-## 6. Multiplayer (Fasa 3 — reka bentuk, belum dilaksana)
+## 6. Multiplayer (dilaksana — pelayan berwibawa)
+
+Kontrak bersama klien/pelayan: `src/multiplayer/protocol.ts`. Logik bilik tulen: `functions/src/rooms.ts`
+(diuji dengan `MemoryRepo`), dibalut oleh `functions/src/index.ts` (Cloud Functions 2nd gen, `asia-southeast1`).
+Panduan deploy & kos: [`DEPLOY.md`](DEPLOY.md).
 
 ### 6.1 Firestore
 ```
-rooms/{roomId}                 metadata awam: status, hostUid, settings, version, turn, scores, board, bagCount
-rooms/{roomId}/players/{uid}   profil awam: nickname, ready, connected, lastSeen, score
-rooms/{roomId}/privateHands/{uid}  rak peribadi (baca: pemilik sahaja)
-rooms/{roomId}/moves/{moveId}  langkah yang disahkan (log)
-roomCodes/{code4}              { roomId, expiresAt } — kod 4 digit → roomId (tidak boleh disenarai)
-serverState/{roomId}           beg + benih (TIADA akses klien)
+roomCodes/{code4}              { roomId, expiresAt } — kod 4 digit → roomId        (tiada akses klien)
+rooms/{roomId}                 RoomDoc awam: status, hostUid, settings, players[], pending[], readerUids[], game (papan, bagCount, giliran, deadline, langkah terakhir, keputusan)
+rooms/{roomId}/hands/{uid}     HandDoc { rack, version } — rak peribadi             (baca: pemilik sahaja)
+rooms/{roomId}/moves/{nnnn}    log langkah yang disahkan                            (baca: ahli bilik)
+serverState/{roomId}           GameState penuh: beg, semua rak, rngState            (tiada akses klien)
+rateLimits/{uid}               kiraan cipta/sertai                                  (tiada akses klien)
 ```
-Kod 4 digit (`"0427"` disimpan sebagai **string**, kosong di hadapan dikekalkan) berasingan daripada `roomId` rawak. Kod bukan rahsia: tamat tempoh, had kadar, kelulusan hos, tiada senarai bilik awam.
+Kod 4 digit (`"0427"` disimpan sebagai **string**, sifar di hadapan dikekalkan) berasingan daripada `roomId` rawak
+(CSPRNG). Kod bukan rahsia: tamat tempoh, had kadar (cubaan salah dikira), kelulusan hos pilihan, tiada senarai bilik awam.
+Kod dilepaskan serta-merta apabila permainan tamat.
 
-### 6.2 Matriks kebenaran (Security Rules — tolak secara lalai)
-| Dokumen | Baca | Tulis klien |
-|---|---|---|
-| `rooms/{id}` | ahli bilik | ✗ (Functions sahaja) |
-| `rooms/{id}/players/{uid}` | ahli bilik | ✗ (Functions sahaja; `ready` melalui `setReady`) |
-| `rooms/{id}/privateHands/{uid}` | `request.auth.uid == uid` sahaja | ✗ |
-| `rooms/{id}/moves/*` | ahli bilik | ✗ |
-| `roomCodes/*` | ✗ (`get` melalui `joinRoom` sahaja) | ✗ |
-| `serverState/*` | ✗ | ✗ |
+### 6.2 Matriks kebenaran (Security Rules — tolak secara lalai, klien TIDAK menulis apa-apa)
+| Dokumen | Baca | Tulis klien | Ujian |
+|---|---|---|---|
+| `rooms/{id}` | `uid ∈ readerUids` (pemain + permintaan menunggu); tiada `list` | ✗ | `tests/emulator/rules.test.ts` |
+| `rooms/{id}/hands/{uid}` | `request.auth.uid == uid` sahaja | ✗ | rules + `functions.test.ts` (rak orang lain → `permission-denied`) |
+| `rooms/{id}/moves/*` | ahli bilik | ✗ | rules |
+| `roomCodes/*`, `serverState/*`, `rateLimits/*` | ✗ | ✗ | rules + `functions.test.ts` |
 
 ### 6.3 Callable Functions
-`createRoom, joinRoom, approveJoin, setReady, startGame, submitMove, swapTiles, passTurn, resign, reconnect, leaveRoom, closeExpiredRooms (berjadual)` — setiap satu dalam **transaksi Firestore** dan memanggil `applyAction()` yang sama dengan `expectedVersion` + `action.id` (idempotensi). Status bilik: `menunggu → sedia → bermain → tamat | tamat-tempoh`.
+`createRoom, joinRoom, approveJoin, setReady, updateSettings, startGame, gameAction (play/swap/pass/resign), claimTimeout,
+heartbeat, leaveRoom` + berjadual `closeExpiredRooms` (tutup bilik tidak aktif, padam bilik lama).
+Setiap satu berjalan dalam **transaksi Firestore** (semua bacaan sebelum tulisan) dan tindakan permainan memanggil
+`applyAction()` yang sama seperti Single Player dengan `expectedVersion` + `actionId` (idempotensi: cubaan semula
+rangkaian dijawab `duplicate`, tidak pernah dikira dua kali). Beg dikocok dengan CSPRNG pelayan.
+
+Status bilik: `menunggu → sedia → bermain → tamat | tamat-tempoh`.
+- **Tahap** ialah pratetap seluruh bilik (bantuan: MUDAH tanpa had, SEDERHANA 3, SUKAR 1 setiap pemain) — sama untuk semua.
+  Menukar tetapan membatalkan SEDIA semua pemain; tetapan dikunci selepas MULA.
+- **Pemasa**: pelayan menyimpan `turnDeadline`; mana-mana ahli boleh menuntut `claimTimeout` selepas tarikh akhir + 2 s
+  (id tindakan `timeout-v{version}` → tepat satu langkau). Tanpa pemasa: pemain yang terputus > 2 minit dilangkau.
+- **Kehadiran**: heartbeat 25 s; "terputus" selepas 70 s; peranan hos berpindah selepas 90 s.
+- **Keluar** semasa permainan = menyerah; jubin dipulangkan ke beg; pemain lain meneruskan.
+- **Sambung semula**: uid tanpa nama kekal selepas muat semula; `roomId`, draf dan susunan rak disimpan setempat.
+
+### 6.4 Batasan diketahui (multiplayer)
+- Had bantuan dikira pada peranti (bantuan dijana daripada rak pemain sendiri; penguatkuasaan pelayan tidak bermakna).
+- Tiada "main semula" dalam bilik yang sama — cipta bilik baharu (kod boleh digunakan semula serta-merta).
+- App Check belum diaktifkan (lihat `DEPLOY.md §5`).
 
 ---
 
@@ -175,13 +197,20 @@ src/
   components/    Board.tsx Tile.tsx TileRack.tsx GameHUD.tsx ActionBar.tsx JawiText.tsx BlankPicker.tsx WordPreview.tsx ...
   screens/       Splash Home ModeSelect DifficultySelect Game Results Multiplayer Tutorial Dictionary Settings History Teacher
   features/
-    single/      useSinglePlayer.ts (bot loop, pemasa, bantuan)
-    multiplayer/ README (Fasa 3)
-scripts/         derive-tiles.ts validate-lexicon.ts
+    single/      store, controller, bot Web Worker, seret & lepas
+    play/        useTileTable (meja jubin dikongsi SP/MP), SwapSheet, rackOrder
+    multiplayer/ MultiplayerHome, Lobby, RoomScreen, MultiplayerTable, MpResults, api, useRoom, session
+  multiplayer/   protocol.ts (kontrak klien/pelayan), view.ts
+  lib/firebase.ts  SDK Firebase dimuat malas (hanya apabila Multiplayer dibuka)
+functions/src/   index.ts (Cloud Functions), rooms.ts (logik bilik tulen), repo.ts, firestoreRepo.ts
+firestore.rules  firestore.indexes.json  firebase.json
+scripts/         derive-tiles.ts validate-lexicon.ts build-embedded.ts export-review.ts apply-review.ts
 tests/
-  unit/          Vitest — enjin, kamus, bot (permainan penuh)
+  unit/          Vitest — enjin, kamus, bot, logik bilik multiplayer
+  emulator/      Vitest + Emulator Suite — peraturan, Functions, pemadaman
   e2e/           Playwright — 360/390/768/1280px
-docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md
+  e2e-mp/        Playwright berbilang konteks terhadap emulator
+docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md DEPLOY.md semakan/
 ```
 
 ---
@@ -202,4 +231,4 @@ docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md
 ### Batasan diketahui
 - Dengan 1,375 perkataan, simulasi bot lawan bot menggunakan 79–85 daripada 88 jubin dan beg habis dalam 7/8 permainan (dengan 530 perkataan: 52–81 jubin, beg habis 2/8). Penghujung permainan masih kerap tamat melalui had tanpa mata apabila rak tinggal huruf bernilai tinggi (ف ع ح ء ڽ).
 - Bot dikira pada utas utama (purata ~70 ms, maksimum ~250 ms pada desktop); telefon lama mungkin lebih perlahan. Pindahan ke Web Worker ialah langkah seterusnya jika perlu.
-- Bot single player berjalan di klien; rak bot boleh dilihat oleh pengguna teknikal dalam `localStorage`. Diterima untuk luar talian; multiplayer menyimpan rak di pelayan.
+- Bot single player berjalan di klien; rak bot boleh dilihat oleh pengguna teknikal dalam `localStorage`. Diterima untuk luar talian; multiplayer menyimpan semua rak di pelayan.

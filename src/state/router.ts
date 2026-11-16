@@ -7,6 +7,7 @@ export type Route =
   | 'game'
   | 'results'
   | 'multi'
+  | 'bilik'
   | 'tutorial'
   | 'kamus'
   | 'tetapan'
@@ -21,6 +22,7 @@ const PATHS: Record<Route, string> = {
   game: 'permainan',
   results: 'keputusan',
   multi: 'multi',
+  bilik: 'bilik',
   tutorial: 'tutorial',
   kamus: 'kamus',
   tetapan: 'tetapan',

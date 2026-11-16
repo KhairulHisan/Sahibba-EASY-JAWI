@@ -1,13 +1,19 @@
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { MultiplayerHome } from '../features/multiplayer/MultiplayerHome';
+import { MULTIPLAYER_ENABLED } from '../lib/firebase';
 import { navigate } from '../state/router';
 
-/**
- * Honest status page. Network multiplayer requires the Firebase backend
- * (Phase 3). Nothing here pretends to connect.
- */
 export function Multiplayer() {
+  return MULTIPLAYER_ENABLED ? <MultiplayerHome /> : <NotConfigured />;
+}
+
+/**
+ * Honest status page for builds without a Firebase project (e.g. the
+ * embedded single-file build). Nothing here pretends to connect.
+ */
+function NotConfigured() {
   return (
     <div className="app-bg min-h-full overflow-y-auto" data-testid="multiplayer">
       <ScreenHeader title="Multiplayer" />
@@ -17,14 +23,15 @@ export function Multiplayer() {
           <div>
             <h2 className="font-display text-xl font-semibold">Belum disambungkan ke pelayan</h2>
             <p className="mt-1 text-ink-soft">
-              Mod berbilang pemain (2–4 peranti) memerlukan pelayan Firebase yang sah untuk mengesahkan setiap langkah, menyimpan rak peribadi
-              secara rahsia dan menyegerakkan giliran. Pelayan itu <b>belum dikonfigurasi</b> dalam binaan ini, jadi butang bilik dimatikan.
+              Mod berbilang pemain (2–4 peranti) memerlukan pelayan Firebase untuk mengesahkan setiap langkah, menyimpan rak peribadi secara
+              rahsia dan menyegerakkan giliran. Binaan ini (cth. pratonton satu fail) <b>tidak disambungkan</b> kepada projek Firebase, jadi
+              butang bilik dimatikan.
             </p>
           </div>
         </div>
 
         <section className="card p-4">
-          <h2 className="mb-3 font-display text-lg font-semibold">Apa yang akan tersedia (Fasa 3)</h2>
+          <h2 className="mb-3 font-display text-lg font-semibold">Apa yang tersedia apabila pelayan disambungkan</h2>
           <div className="mb-4 grid grid-cols-2 gap-3">
             <button type="button" disabled className="btn-3d min-h-16 rounded-2xl bg-navy-800 font-display text-lg font-semibold text-white" aria-describedby="mp-why">
               CIPTA BILIK
@@ -34,7 +41,7 @@ export function Multiplayer() {
             </button>
           </div>
           <p id="mp-why" className="mb-3 text-sm font-semibold text-coral-700">
-            Dimatikan: pelayan permainan belum disediakan.
+            Dimatikan: binaan ini tiada konfigurasi Firebase.
           </p>
           <ul className="grid gap-2 text-sm text-ink-soft">
             <li>• Hos memilih kod bilik <b>4 digit</b> (cth. 0427 — sifar di hadapan dikekalkan), tahap, peraturan dan had giliran.</li>
@@ -49,7 +56,7 @@ export function Multiplayer() {
           <h2 className="mb-2 font-display text-lg font-semibold">Untuk pentadbir / guru</h2>
           <p className="text-sm text-ink-soft">
             Langkah persediaan Firebase (projek, Authentication tanpa nama, Firestore, Cloud Functions, Emulator) dan kos yang mungkin terlibat
-            didokumenkan dalam <code>docs/BLUEPRINT.md §6</code> repositori ini.
+            didokumenkan dalam <code>docs/DEPLOY.md</code> repositori ini.
           </p>
         </section>
 

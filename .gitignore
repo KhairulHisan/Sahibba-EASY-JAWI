@@ -16,3 +16,4 @@ dist-embedded
 functions/lib
 functions/node_modules
 *-debug.log
+dist-mp

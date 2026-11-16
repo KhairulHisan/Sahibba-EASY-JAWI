@@ -14,6 +14,7 @@ import {
   claimTimeout,
   createRoom,
   expireRooms,
+  purgeOldRooms,
   heartbeat,
   joinRoom,
   leaveRoom,
@@ -333,6 +334,22 @@ describe('abuse limits and expiry', () => {
     expect(await expireRooms(w.repo, w.now)).toBe(1);
     expect(w.room(roomId).status).toBe('tamat-tempoh');
     expect(w.repo.docs.has('roomCodes/0427')).toBe(false);
+  });
+
+  it('deletes closed rooms (nicknames, racks, move log, server state) a day after they expire — never active ones', async () => {
+    const w = world();
+    const old = await started(w, 2);
+    w.advance(MP_TIMING.activeTtlMs + 1);
+    await expireRooms(w.repo, w.now);
+    const active = (await createRoom(w.as('other'), { code: '1111', nickname: 'Baru', settings: SETTINGS })).roomId;
+    expect([...w.repo.docs.keys()].some((k) => k.startsWith(`rooms/${old}/hands/`))).toBe(true);
+
+    expect(await purgeOldRooms(w.repo, w.now)).toBe(0); // too recent
+    w.advance(MP_TIMING.purgeAfterMs + 1);
+    expect(await purgeOldRooms(w.repo, w.now)).toBe(1);
+    const left = [...w.repo.docs.keys()];
+    expect(left.filter((k) => k.includes(old))).toEqual([]);
+    expect(w.room(active).status).toBe('menunggu'); // purge never touches rooms that are not closed
   });
 });
 

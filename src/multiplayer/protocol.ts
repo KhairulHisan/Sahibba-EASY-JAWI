@@ -176,6 +176,8 @@ export const MP_TIMING = {
   activeTtlMs: 2 * 60 * 60 * 1000,
   /** Finished rooms stay readable for results, then expire. */
   finishedTtlMs: 24 * 60 * 60 * 1000,
+  /** Closed rooms (with nicknames and move logs) are deleted this long after they expire. */
+  purgeAfterMs: 24 * 60 * 60 * 1000,
   heartbeatMs: 25_000,
   /** Shown as disconnected after this long without a heartbeat. */
   connectedMs: 70_000,
