@@ -14,7 +14,8 @@
     "test:e2e": "playwright test --trace off",
     "lexicon:validate": "tsx scripts/validate-lexicon.ts",
     "tiles:derive": "tsx scripts/derive-tiles.ts",
-    "build:embedded": "vite build --mode embedded && tsx scripts/build-embedded.ts"
+    "build:embedded": "vite build --mode embedded && tsx scripts/build-embedded.ts",
+    "lexicon:export-review": "tsx scripts/export-review.ts"
   },
   "dependencies": {
     "@fontsource/fredoka": "^5.2.8",
