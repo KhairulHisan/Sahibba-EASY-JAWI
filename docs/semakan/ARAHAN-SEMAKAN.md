@@ -82,6 +82,8 @@ Pulangkan hasilnya sebagai fail CSV yang boleh dimuat turun dengan lajur yang sa
 4. Hasilnya `ejawimakmur/perbandingan-01.csv`: setiap perkataan ditanda `SAMA` atau `BERBEZA`. Perbezaan huruf yang setara (cth. ك lawan ک) diabaikan.
 5. Ulang untuk `rumi-02.txt` hingga `rumi-07.txt`.
 
+Langkah yang sama boleh digunakan dengan penukar lain, contohnya [Penukar Rumi ke Jawi EDUFUSION](https://www.upkklms.com/penukar-jawi.html) (percuma, menyatakan ia menggunakan kamus 67,000+ perkataan). Tampal `rumi-NN.txt` di laman itu, salin output Jawi, dan bandingkan dengan arahan yang sama. Penukar ini hanya digunakan sebagai rujukan semakan; EASY JAWI tidak memanggil pelayannya.
+
 Perkataan `BERBEZA` tidak bermakna EASY JAWI salah, kerana penukar automatik juga boleh tersilap. Bawa senarai perbezaan kepada guru Jawi untuk keputusan muktamad.
 
 ## Selepas semakan
