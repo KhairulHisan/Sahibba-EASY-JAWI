@@ -43,13 +43,4 @@ export const useSettings = create<SettingsStore>()(
   ),
 );
 
-/** Strip anything that isn't a letter, digit, space or simple punctuation. */
-export function sanitizeNickname(raw: string): string {
-  const cleaned = raw
-    .normalize('NFC')
-    .replace(/[^\p{L}\p{N} ._-]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 16);
-  return cleaned || 'Pemain';
-}
+export { sanitizeNickname } from '../lib/nickname';
