@@ -8,6 +8,7 @@ playwright-report
 .env
 .env.*
 !.env.example
+!.env.production
 .DS_Store
 .firebase
 firebase-debug.log

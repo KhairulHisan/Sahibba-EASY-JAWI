@@ -9,12 +9,15 @@ import type { Functions } from 'firebase/functions';
 
 const env = import.meta.env;
 export const MP_EMULATOR = env.VITE_FIREBASE_EMULATOR === '1';
-const config = {
-  apiKey: env.VITE_FIREBASE_API_KEY || (MP_EMULATOR ? 'demo-key' : ''),
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || undefined,
-  projectId: env.VITE_FIREBASE_PROJECT_ID || (MP_EMULATOR ? 'demo-easy-jawi' : ''),
-  appId: env.VITE_FIREBASE_APP_ID || (MP_EMULATOR ? 'demo-app' : ''),
-};
+// Emulator builds always use the offline demo project, never the real one.
+const config = MP_EMULATOR
+  ? { apiKey: 'demo-key', authDomain: undefined, projectId: 'demo-easy-jawi', appId: 'demo-app' }
+  : {
+      apiKey: env.VITE_FIREBASE_API_KEY ?? '',
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || undefined,
+      projectId: env.VITE_FIREBASE_PROJECT_ID ?? '',
+      appId: env.VITE_FIREBASE_APP_ID ?? '',
+    };
 
 /** True when this build can reach a multiplayer server (real project or emulator). */
 export const MULTIPLAYER_ENABLED = env.VITE_EMBEDDED !== '1' && Boolean(config.projectId && config.apiKey);

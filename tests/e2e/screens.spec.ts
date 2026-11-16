@@ -21,10 +21,23 @@ test.describe('navigation, responsiveness and accessibility', () => {
       await expect(page.getByTestId('home')).toBeVisible();
     }
     await page.getByTestId('mode-multi').click();
-    await expect(page.getByTestId('multiplayer')).toContainText('Belum disambungkan');
-    // Room buttons are honestly disabled — no fake connectivity.
-    await expect(page.getByRole('button', { name: 'CIPTA BILIK' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'SERTAI BILIK' })).toBeDisabled();
+    await expect(page.getByTestId('multiplayer')).toBeVisible();
+    if (await page.getByTestId('mp-submit').count()) {
+      // Build with a Firebase project: the form only submits a 4-digit code (no network call made here).
+      await expect(page.getByTestId('mp-submit')).toBeDisabled();
+      await page.getByTestId('room-code-input').fill('04a2');
+      await expect(page.getByTestId('room-code-input')).toHaveValue('042');
+      await expect(page.getByTestId('mp-submit')).toBeDisabled();
+      await page.getByTestId('room-code-input').fill('0427');
+      await expect(page.getByTestId('mp-submit')).toBeEnabled();
+      await page.getByTestId('mp-tab-sertai').click();
+      await expect(page.getByTestId('mp-submit')).toHaveText('SERTAI BILIK');
+    } else {
+      // Build without Firebase config: room buttons are honestly disabled — no fake connectivity.
+      await expect(page.getByTestId('multiplayer')).toContainText('Belum disambungkan');
+      await expect(page.getByRole('button', { name: 'CIPTA BILIK' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'SERTAI BILIK' })).toBeDisabled();
+    }
     await noHorizontalOverflow(page);
   });
 

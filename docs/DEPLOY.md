@@ -17,35 +17,33 @@ Authentication (tanpa nama), Cloud Firestore, Cloud Functions (2nd gen) dan — 
 
 ## 2. Konfigurasi binaan
 
-Salin `.env.example` kepada `.env.production.local` dan isi:
+Projek repo ini sudah dikonfigurasi untuk **`sahibba-easy-jawi`**:
+- `.env.production` — konfigurasi web app (dibaca oleh `npm run build`).
+- `.firebaserc` — `firebase deploy` menyasarkan `sahibba-easy-jawi` secara lalai.
 
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=easy-jawi-sekolah.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=easy-jawi-sekolah
-VITE_FIREBASE_APP_ID=...
-```
+Untuk projek lain, tukar kedua-dua fail itu (atau `firebase use --add`). Nilai konfigurasi web **bukan rahsia** — ia
+dihantar kepada setiap pelayar. Keselamatan datang daripada `firestore.rules` (klien hanya boleh membaca bilik dan rak
+sendiri) dan Cloud Functions (satu-satunya penulis, mengesahkan setiap langkah). Disyorkan: hadkan API key kepada domain
+laman anda (Google Cloud Console → APIs & Services → Credentials → HTTP referrers: `sahibba-easy-jawi.web.app/*`,
+`sahibba-easy-jawi.firebaseapp.com/*`, `localhost/*`).
 
-Nilai ini **bukan rahsia** — ia hanya mengenal pasti projek. Keselamatan datang daripada `firestore.rules`
-(klien hanya boleh membaca) dan Cloud Functions (satu-satunya penulis, mengesahkan setiap langkah).
-Jika pemboleh ubah ini kosong, skrin Multiplayer memaparkan status "tidak disambungkan" dan butang bilik dimatikan.
+Firebase Analytics **tidak** digunakan (aplikasi untuk kanak-kanak; tiada penjejakan).
 
 ## 3. Deploy
 
+Jangan jalankan `firebase init` — `firebase.json`, `firestore.rules`, `firestore.indexes.json` dan `functions/` sudah
+disediakan, dan `init` boleh menggantikannya dengan templat kosong.
+
 ```bash
-npm install
+npm install -g firebase-tools
 ```
 
 ```bash
-npm --prefix functions install
+firebase login
 ```
 
 ```bash
-npx firebase-tools login
-```
-
-```bash
-npx firebase-tools use --add easy-jawi-sekolah
+npm install && npm --prefix functions install
 ```
 
 ```bash
@@ -53,12 +51,14 @@ npm run build
 ```
 
 ```bash
-npx firebase-tools deploy --only firestore,functions,hosting
+firebase deploy --only firestore,functions,hosting
 ```
 
-Ini memasang: peraturan + indeks Firestore (`firestore.rules`, `firestore.indexes.json`), 11 Cloud Functions
-di `asia-southeast1` (10 boleh dipanggil + `closeExpiredRooms` setiap 30 minit), dan laman web daripada `dist/`.
-Indeks komposit (`rooms: status + expiresAt`) mungkin mengambil beberapa minit untuk siap selepas deploy pertama.
+Ini memasang: peraturan + indeks Firestore, 11 Cloud Functions di `asia-southeast1` (10 boleh dipanggil +
+`closeExpiredRooms` setiap 30 minit), dan laman web daripada `dist/` ke <https://sahibba-easy-jawi.web.app>.
+Deploy pertama Functions mengaktifkan beberapa API Google Cloud secara automatik (Cloud Build, Artifact Registry,
+Cloud Run, Eventarc, Cloud Scheduler) dan boleh mengambil 5–10 minit. Indeks komposit (`rooms: status + expiresAt`)
+mungkin mengambil beberapa minit lagi untuk siap.
 
 Hos lain (Vercel/Netlify) juga boleh digunakan untuk laman web; Firestore dan Functions tetap di Firebase.
 
