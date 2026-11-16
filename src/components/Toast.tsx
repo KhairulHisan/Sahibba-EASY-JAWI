@@ -7,6 +7,7 @@ export interface ToastItem {
   tone: 'jade' | 'coral' | 'navy' | 'mango';
   content: ReactNode;
   onClick?: () => void;
+  actionLabel?: string;
 }
 
 interface ToastStore {
@@ -48,15 +49,19 @@ export function Toaster() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, transition: { duration: 0.15 } }}
             transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-            className={`pointer-events-auto max-w-md rounded-2xl px-4 py-2.5 font-semibold shadow-lg ${TONE[t.tone]}`}
+            // Taps pass through to the board; only the explicit action button is clickable.
+            className={`pointer-events-none flex max-w-md items-center gap-2 rounded-2xl px-4 py-2 font-semibold shadow-lg ${TONE[t.tone]}`}
             role="status"
           >
-            {t.onClick ? (
-              <button type="button" className="w-full text-left" onClick={t.onClick}>
-                {t.content}
+            <span className="min-w-0">{t.content}</span>
+            {t.onClick && (
+              <button
+                type="button"
+                onClick={t.onClick}
+                className="pointer-events-auto min-h-9 shrink-0 rounded-full bg-white/25 px-3 text-sm font-bold underline-offset-2 hover:bg-white/35"
+              >
+                {t.actionLabel ?? 'Makna'}
               </button>
-            ) : (
-              t.content
             )}
           </motion.div>
         ))}

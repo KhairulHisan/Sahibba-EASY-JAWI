@@ -90,6 +90,11 @@ function ActiveGame() {
   const [confirm, setConfirm] = useState<null | 'resign' | 'pass'>(null);
   const [wordShown, setWordShown] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [hintLoading, setHintLoading] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
+  const mounted = useRef(true);
+  useEffect(() => () => void (mounted.current = false), []);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const boardScroller = useRef<HTMLDivElement | null>(null);
   const [rackBox, rackSize] = useElementSize<HTMLDivElement>();
@@ -158,6 +163,8 @@ function ActiveGame() {
       }
       const tile = rackById.get(tileId);
       if (!tile) return;
+      // A joker moved from one cell to another keeps the letter already chosen.
+      letter ??= validDraft.find((p) => p.tileId === tileId)?.letter;
       if (tile.isBlank && !letter) {
         setBlankFor({ tileId, x, y });
         return;
@@ -268,8 +275,11 @@ function ActiveGame() {
     } else setSelected(null);
   };
 
-  const onHint = () => {
-    const h = requestHint();
+  const onHint = async () => {
+    if (hintLoading) return;
+    setHintLoading(true);
+    const h = await requestHint(() => pausedRef.current || !mounted.current).finally(() => mounted.current && setHintLoading(false));
+    if (h === 'stale') return;
     if (h === 'none-left') {
       toast({ tone: 'navy', content: 'Bantuan sudah habis untuk tahap ini.' });
       return;
@@ -312,7 +322,6 @@ function ActiveGame() {
               <JawiText text={main.text} className="text-2xl leading-[1.4] font-bold" />
               <span className="rounded-lg bg-white/20 px-1.5 font-display">+{ev.score}</span>
               {ev.allTilesBonus && <span className="rounded-lg bg-mango-400 px-1.5 text-ink">7 jubin!</span>}
-              <span className="text-xs underline opacity-90">makna</span>
             </span>
           ),
         },
@@ -339,30 +348,61 @@ function ActiveGame() {
     if (cur.kind !== 'bot') return;
     const v = game.version;
     fx('bot-thinking');
-    const t = window.setTimeout(() => runBotTurn(v), THINK_MS[cur.botLevel ?? 'mudah']);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    const t = window.setTimeout(() => void runBotTurn(v, () => cancelled), THINK_MS[cur.botLevel ?? 'mudah']);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [game.version, game.phase, game.currentPlayer, game.players, paused]);
 
   // ---- turn timer ---------------------------------------------------------------
+  // Deadline-based countdown: remaining time is always derived from the clock,
+  // so a busy main thread or a throttled tab cannot make the timer drift.
+  const deadline = useRef<number | null>(null);
+  const remainingOnPause = useRef<number | null>(null);
   useEffect(() => {
     if (!timerOn || !isYourTurn) {
+      deadline.current = null;
+      remainingOnPause.current = null;
       setTimeLeft(null);
       return;
     }
+    deadline.current = Date.now() + (turnSeconds ?? 0) * 1000;
+    remainingOnPause.current = null;
     setTimeLeft(turnSeconds);
   }, [timerOn, isYourTurn, turnSeconds, game.version]);
   useEffect(() => {
-    if (timeLeft === null || paused || !isYourTurn) return;
-    if (timeLeft <= 0) {
-      setDraft([]);
-      passTurn(true);
-      fx('error');
+    if (deadline.current === null) return;
+    if (paused) {
+      remainingOnPause.current ??= Math.max(0, deadline.current - Date.now());
       return;
     }
-    if (timeLeft <= 10 && timeLeft % 5 === 0) fx('countdown-warning');
-    const t = window.setTimeout(() => setTimeLeft((s) => (s === null ? null : s - 1)), 1000);
-    return () => window.clearTimeout(t);
-  }, [timeLeft, paused, isYourTurn, setDraft]);
+    if (remainingOnPause.current !== null) {
+      deadline.current = Date.now() + remainingOnPause.current;
+      remainingOnPause.current = null;
+    }
+    let lastShown = -1;
+    let expired = false;
+    const tick = () => {
+      if (deadline.current === null || expired) return;
+      const left = Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000));
+      if (left !== lastShown) {
+        lastShown = left;
+        setTimeLeft(left);
+        if (left > 0 && left <= 10 && left % 5 === 0) fx('countdown-warning');
+      }
+      if (left === 0) {
+        expired = true;
+        setDraft([]);
+        passTurn(true);
+        fx('error');
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [paused, isYourTurn, timerOn, game.version, setDraft]);
   useEffect(() => {
     const onVis = () => {
       if (document.hidden && timerOn) setPaused(true);
@@ -487,10 +527,10 @@ function ActiveGame() {
             },
             {
               id: 'bantuan',
-              label: 'BANTUAN',
+              label: hintLoading ? 'MENCARI…' : 'BANTUAN',
               icon: 'bulb',
-              onClick: onHint,
-              disabled: !isYourTurn || paused || hintsLeft === 0,
+              onClick: () => void onHint(),
+              disabled: !isYourTurn || paused || hintsLeft === 0 || hintLoading,
               disabledReason: hintsLeft === 0 ? 'Bantuan sudah habis' : 'Bukan giliran anda',
               badge: hintsLeft === null ? '∞' : String(hintsLeft),
             },

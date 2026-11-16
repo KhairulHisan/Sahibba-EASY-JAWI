@@ -41,6 +41,12 @@ test.describe('tutorial, dictionary and teacher mode', () => {
     await page.getByTestId('dict-search').fill('kucing');
     await page.getByRole('button', { name: /کوچيڠ kucing/ }).click();
     await expect(page.getByTestId('word-detail')).toContainText('Haiwan peliharaan');
+    await expect(page.getByTestId('word-detail')).toContainText('Ejaan disemak (AI)');
+    await page.getByRole('button', { name: 'Tutup' }).click();
+    // An entry the AI reviewer was unsure about is labelled for teachers.
+    await page.getByTestId('dict-search').fill('laut');
+    await page.getByRole('button', { name: /لاءوت laut/ }).click();
+    await expect(page.getByTestId('word-detail')).toContainText('Ejaan perlu disahkan guru');
     await page.getByRole('button', { name: 'Tutup' }).click();
     await page.getByTestId('dict-search').fill('');
     await page.getByRole('button', { name: 'Warna', exact: true }).click();

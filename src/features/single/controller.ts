@@ -3,11 +3,12 @@
  * Every action goes through applyAction() with an idempotency key and the
  * expected version, exactly as a multiplayer server would require.
  */
-import { chooseBotMove, suggestMove, type MoveCandidate } from '../../engine/bot';
+import type { MoveCandidate } from '../../engine/bot';
 import { applyAction, evaluatePlay } from '../../engine/game';
-import { randomId, Rng } from '../../engine/rng';
+import { randomId } from '../../engine/rng';
 import type { ActionDraft, ActionResult, GameState } from '../../engine/types';
 import { lexiconFor } from '../../state/lexicon';
+import { computeBotMove, computeHint } from './botClient';
 import { useHistory, type MatchRecord } from '../../state/history';
 import { BOT_ID, HUMAN_ID, HINT_LIMIT, useSingle } from './store';
 
@@ -48,18 +49,30 @@ export function resign(): ActionResult {
   return dispatch({ type: 'RESIGN', playerId: HUMAN_ID }, true);
 }
 
-/** Compute and apply the bot's move for the current state. */
-export function runBotTurn(expectedVersion: number): ActionResult | null {
-  const { game } = useSingle.getState();
+/**
+ * Compute (in a background worker) and apply the bot's move. Resolves to null
+ * if the game moved on meanwhile (version check), so a stale result is never
+ * applied. A rejected move falls back to a pass so the game cannot stall.
+ */
+export async function runBotTurn(expectedVersion: number, isCancelled: () => boolean = () => false): Promise<ActionResult | null> {
+  const { game, packIds } = useSingle.getState();
   if (!game || game.phase !== 'active' || game.version !== expectedVersion) return null;
   const idx = game.currentPlayer;
   const bot = game.players[idx];
   if (!bot || bot.kind !== 'bot') return null;
-  const rng = new Rng((game.rngState ^ Math.imul(game.version + 1, 0x9e3779b1)) >>> 0);
-  const decision = chooseBotMove(game, idx, activeLexicon(), bot.botLevel ?? 'mudah', rng);
-  if (decision.type === 'PLAY') return dispatch({ type: 'PLAY', playerId: BOT_ID, placements: decision.placements }, false);
-  if (decision.type === 'SWAP') return dispatch({ type: 'SWAP', playerId: BOT_ID, tileIds: decision.tileIds }, false);
-  return dispatch({ type: 'PASS', playerId: BOT_ID }, false);
+  const seed = (game.rngState ^ Math.imul(game.version + 1, 0x9e3779b1)) >>> 0;
+  const decision = await computeBotMove(game, idx, bot.botLevel ?? 'mudah', seed, activeLexicon(), lexiconKey(packIds));
+  // Discard the result if the game moved on, or the player paused/left meanwhile.
+  if (isCancelled() || useSingle.getState().game?.version !== expectedVersion) return null;
+  let res: ActionResult;
+  if (decision.type === 'PLAY') res = dispatch({ type: 'PLAY', playerId: BOT_ID, placements: decision.placements }, false);
+  else if (decision.type === 'SWAP') res = dispatch({ type: 'SWAP', playerId: BOT_ID, tileIds: decision.tileIds }, false);
+  else res = dispatch({ type: 'PASS', playerId: BOT_ID }, false);
+  if (!res.ok && res.error.code !== 'STALE_VERSION' && res.error.code !== 'GAME_FINISHED') {
+    console.warn('Bot move rejected, passing instead:', res.error);
+    res = dispatch({ type: 'PASS', playerId: BOT_ID }, false);
+  }
+  return res;
 }
 
 export function hintsRemaining(): number | null {
@@ -69,16 +82,19 @@ export function hintsRemaining(): number | null {
   return limit === null ? null : Math.max(0, limit - hintsUsed);
 }
 
-export function requestHint(): MoveCandidate | null | 'none-left' {
-  const { game, useHint } = useSingle.getState();
+/** Suggest a move for the human (background worker). Only counts as used if one is found. */
+export async function requestHint(isCancelled: () => boolean = () => false): Promise<MoveCandidate | null | 'none-left' | 'stale'> {
+  const { game, packIds } = useSingle.getState();
   if (!game) return null;
-  const left = hintsRemaining();
-  if (left === 0) return 'none-left';
+  if (hintsRemaining() === 0) return 'none-left';
   const humanIdx = game.players.findIndex((p) => p.id === HUMAN_ID);
-  const hint = suggestMove(game, humanIdx, activeLexicon(), game.difficulty);
-  if (hint) useHint();
+  const hint = await computeHint(game, humanIdx, game.difficulty, activeLexicon(), lexiconKey(packIds));
+  if (isCancelled() || useSingle.getState().game?.version !== game.version) return 'stale';
+  if (hint) useSingle.getState().useHint();
   return hint;
 }
+
+const lexiconKey = (packIds: readonly string[]) => ['teras', ...[...packIds].sort()].join('|');
 
 export function previewDraft(game: GameState) {
   const { draft } = useSingle.getState();

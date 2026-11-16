@@ -96,6 +96,68 @@ test.describe('single player gameplay', () => {
     await expect(cell(page, 6, 6)).toHaveAttribute('aria-label', /jubin anda ba/);
   });
 
+  test('moving a joker that is already on the board keeps its letter', async ({ page }, info) => {
+    test.skip(info.project.use.hasTouch === true, 'mouse drag covered on desktop project');
+    await startGame(page, { seed: 6 });
+    await page.locator('[data-rack] [data-tile-letter=""]').first().click();
+    await cell(page, 6, 6).click();
+    await page.locator('[role=dialog] [data-letter="ب"]').click();
+    await expect(cell(page, 6, 6)).toContainText('ب');
+    const from = (await cell(page, 6, 6).boundingBox())!;
+    const to = (await cell(page, 7, 6).boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect(cell(page, 7, 6)).toContainText('ب');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('dialogs close with Escape and keep keyboard focus inside', async ({ page }, info) => {
+    test.skip(info.project.use.hasTouch === true, 'keyboard test on desktop');
+    await startGame(page, { seed: 7 });
+    await page.getByTestId('action-tukar').click();
+    const dialog = page.getByRole('dialog', { name: 'Tukar jubin' });
+    await expect(dialog).toBeVisible();
+    for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
+    expect(await dialog.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId('action-tukar')).toBeFocused();
+  });
+
+  test('the hint button shows progress and never freezes the turn', async ({ page }) => {
+    await startGame(page, { seed: 7 });
+    await page.getByTestId('action-bantuan').click();
+    await expect(page.getByTestId('hint-panel')).toBeVisible();
+    await expect(page.getByTestId('action-bantuan')).toContainText('BANTUAN');
+  });
+
+  test('SUKAR bot (background worker) plays a whole game to the result screen', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop-1280', 'long game runs once');
+    test.setTimeout(300_000);
+    await startGame(page, { seed: 12, level: 'sukar' });
+    let botTurns = 0;
+    const deadline = Date.now() + 260_000;
+    while (Date.now() < deadline) {
+      if (await page.getByTestId('results').isVisible()) break;
+      const ready = await page.getByTestId('action-tukar').isEnabled().catch(() => false);
+      if (!ready) {
+        await page.waitForTimeout(400);
+        continue;
+      }
+      // The human only passes, so the game ends once the bot runs out of moves.
+      await page.getByTestId('action-menu').click();
+      await page.getByRole('button', { name: 'Langkau giliran' }).click();
+      await page.getByRole('button', { name: 'Langkau', exact: true }).click();
+      botTurns++;
+    }
+    await expect(page.getByTestId('results')).toBeVisible({ timeout: 30_000 });
+    expect(botTurns).toBeGreaterThan(3);
+    const botScore = Number((await page.getByTestId('results').locator('li').first().innerText()).match(/-?\d+\s*$/)?.[0]);
+    expect(botScore).toBeGreaterThan(0);
+  });
+
   test('game state survives a page refresh and can be resumed', async ({ page }) => {
     await startGame(page, { seed: 7 });
     await page.getByTestId('action-bantuan').click();
@@ -128,8 +190,31 @@ test.describe('single player gameplay', () => {
     await page.getByRole('button', { name: 'Ya, menyerah' }).click();
     await expect(page.getByTestId('results')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('result-title')).toContainText('menang kali ini');
+    await page.getByTestId('play-again').click();
+    await expect(page.getByTestId('game-screen')).toBeVisible();
+    await expect(page.getByTestId('hud-you')).toContainText('0');
+    await expect(page.getByTestId('rack').locator('[data-rack-index]')).toHaveCount(7);
     await page.goto('/#/sejarah');
     await expect(page.getByTestId('history')).toContainText('Kalah');
+  });
+
+  test('turn timer runs out → turn is skipped and the bot plays', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop-1280', 'timer test runs once');
+    await page.clock.install();
+    await page.goto('/?seed=7#single');
+    await page.evaluate(() => localStorage.removeItem('easy-jawi:single:v1'));
+    await page.reload();
+    await page.getByTestId('level-sederhana').click();
+    await page.getByRole('radio', { name: '90 saat' }).click();
+    await page.getByTestId('start-game').click();
+    await expect(page.getByRole('timer')).toContainText('90s');
+    await page.clock.runFor(80_000);
+    await expect(page.getByRole('timer')).toContainText('10s');
+    await page.clock.runFor(11_000);
+    await expect(page.getByRole('status').filter({ hasText: 'Masa tamat' }).first()).toBeVisible();
+    await expect(page.getByTestId('hud-opponent')).toContainText('GILIRAN');
+    await page.clock.runFor(3_000);
+    await expect(page.getByTestId('hud-you')).toContainText('GILIRAN', { timeout: 15_000 });
   });
 
   test('pause hides the board and resume restores it', async ({ page }) => {

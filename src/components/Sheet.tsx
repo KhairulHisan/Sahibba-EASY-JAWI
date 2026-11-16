@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Icon } from './Icon';
 
@@ -23,37 +23,61 @@ export function Sheet({
 }) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
-  const restore = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // Runs only when the sheet opens/closes — NOT on every parent render, which
+  // previously pulled focus out of the dialog (e.g. every second with a timer).
   useEffect(() => {
     if (!open) return;
-    restore.current = document.activeElement as HTMLElement | null;
+    const restore = document.activeElement as HTMLElement | null;
     const t = window.setTimeout(() => {
       const first = panel.current?.querySelector<HTMLElement>('[data-autofocus], button, input, select, textarea, [href]');
       first?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissible) onClose();
+      if (e.key === 'Escape' && dismissible) {
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel.current) return;
+      // Keep keyboard focus inside the dialog.
+      const items = Array.from(panel.current.querySelectorAll<HTMLElement>('button:not([disabled]), input, select, textarea, [href], [tabindex]:not([tabindex="-1"])'));
+      if (items.length === 0) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (!panel.current.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.clearTimeout(t);
       window.removeEventListener('keydown', onKey);
-      restore.current?.focus?.();
+      restore?.focus?.();
     };
-  }, [open, dismissible, onClose]);
+  }, [open, dismissible]);
 
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
+        <ExitSafe
+          key="sheet"
           className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
         >
-          <div className="absolute inset-0 bg-navy-950/55" onClick={() => dismissible && onClose()} aria-hidden="true" />
+          <div className="absolute inset-0 bg-navy-950/55" onClick={() => dismissible && onCloseRef.current()} aria-hidden="true" />
           <motion.div
             ref={panel}
             role="dialog"
@@ -82,10 +106,19 @@ export function Sheet({
             </div>
             {children}
           </motion.div>
-        </motion.div>
+        </ExitSafe>
       )}
     </AnimatePresence>
   );
+}
+
+/**
+ * While a sheet fades out it must not swallow taps or drags meant for the
+ * game underneath (e.g. dragging a tile right after choosing a joker letter).
+ */
+function ExitSafe(props: HTMLMotionProps<'div'>) {
+  const isPresent = useIsPresent();
+  return <motion.div {...props} style={{ ...props.style, pointerEvents: isPresent ? undefined : 'none' }} aria-hidden={isPresent ? undefined : true} />;
 }
 
 export function ConfirmSheet({

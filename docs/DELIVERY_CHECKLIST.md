@@ -12,7 +12,9 @@ Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59
 | Permainan 4 pemain bercampur, markah = log langkah − penalti | PASS | `bot.test.ts` "4-player mixed game" |
 | SUKAR mengatasi MUDAH (benih tetap) | PASS | `bot.test.ts` |
 | Manusia (UI) lawan MUDAH hingga upacara keputusan | PASS | `gameplay.spec.ts` "a full game…" (desktop) |
-| Manusia (UI) lawan SEDERHANA/SUKAR hingga tamat | NOT TESTED | Enjin diuji; aliran UI sama |
+| Bot SUKAR (Web Worker) hingga upacara keputusan melalui UI | PASS | `gameplay.spec.ts` "SUKAR bot (background worker)…" |
+| UI tidak beku semasa bot/bantuan pada CPU 6× perlahan | PASS (manual) | Tugas panjang maks 802 ms → 264 ms selepas Web Worker (ukuran Playwright + CDP) |
+| Joker dipindah di papan kekal hurufnya; dialog Escape + perangkap fokus | PASS | `gameplay.spec.ts` |
 | Sambung selepas muat semula | PASS | `gameplay.spec.ts` "survives a page refresh" (4 saiz) |
 | Main luar talian (service worker) | NOT TESTED | SW dijana (`dist/sw.js`, 51 fail precache); ujian E2E menyekat SW |
 
@@ -65,7 +67,7 @@ Keputusan terkini: `npm test` → **67/67 lulus** · `npm run test:e2e` → **59
 | Fungsi | Status | Bukti |
 |---|---|---|
 | Tetapan, tutorial, bantuan, susun semula (tarik balik & kocok), tukar, langkau, menyerah, jeda, kembali, kamus, sejarah, keputusan, Mod Guru | PASS | `gameplay.spec.ts`, `learning.spec.ts`, `screens.spec.ts` |
-| Pemasa giliran & tamat masa → langkau | NOT TESTED | Dilaksana (`GameScreen.tsx`); tiada ujian masa nyata |
+| Pemasa giliran (berasaskan tarikh akhir) & tamat masa → langkau | PASS | `gameplay.spec.ts` "turn timer runs out" (jam palsu Playwright) |
 | Bunyi boleh didengar | NOT TESTED | 22 bunyi disintesis; kod dijalankan tanpa ralat, output audio tidak boleh disahkan secara headless |
 | Getaran | NOT TESTED | `navigator.vibrate`, boleh dimatikan |
 | Kod bilik | NOT IMPLEMENTED | Fasa 3 |
