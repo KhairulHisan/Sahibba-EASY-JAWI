@@ -13,3 +13,6 @@ playwright-report
 firebase-debug.log
 firestore-debug.log
 dist-embedded
+functions/lib
+functions/node_modules
+*-debug.log

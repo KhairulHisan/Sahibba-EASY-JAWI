@@ -535,12 +535,12 @@ export async function claimTimeout(ctx: Ctx, input: unknown): Promise<ActResult 
 // ---------------------------------------------------------------------------
 
 /** Keep-alive from an open client; also hands the host role over if the host vanished. */
-export async function heartbeat(ctx: Ctx, input: unknown): Promise<{ hostUid: string; status: RoomDoc['status'] }> {
+export async function heartbeat(ctx: Ctx, input: unknown): Promise<{ hostUid: string; status: RoomDoc['status']; serverNow: number }> {
   const o = obj(input);
   const roomId = parseRoomId(o.roomId);
   return ctx.repo.run(async (tx) => {
     const room = await loadRoom(tx, roomId);
-    if (room.pending.some((p) => p.uid === ctx.uid)) return { hostUid: room.hostUid, status: room.status };
+    if (room.pending.some((p) => p.uid === ctx.uid)) return { hostUid: room.hostUid, status: room.status, serverNow: ctx.now };
     const me = requirePlayer(room, ctx.uid);
     me.lastSeen = ctx.now;
     const host = room.players.find((p) => p.uid === room.hostUid);
@@ -552,7 +552,7 @@ export async function heartbeat(ctx: Ctx, input: unknown): Promise<{ hostUid: st
     }
     room.updatedAt = ctx.now;
     tx.set(PATHS.room(roomId), room);
-    return { hostUid: room.hostUid, status: room.status };
+    return { hostUid: room.hostUid, status: room.status, serverNow: ctx.now };
   });
 }
 

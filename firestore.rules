@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// EASY JAWI — default deny. Clients only READ; every write goes through the
+// authoritative Cloud Functions (Admin SDK bypasses these rules).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomReader(roomId) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.readerUids;
+    }
+
+    // Public room view: only members (and pending join requests) may read it.
+    // No listing, so rooms cannot be discovered by browsing.
+    match /rooms/{roomId} {
+      allow get: if signedIn() && request.auth.uid in resource.data.readerUids;
+
+      // A player's rack: readable by that player only.
+      match /hands/{uid} {
+        allow get: if signedIn() && request.auth.uid == uid;
+      }
+
+      // Committed move log: members only.
+      match /moves/{moveId} {
+        allow read: if roomReader(roomId);
+      }
+    }
+
+    // roomCodes, serverState (bag + all racks) and rateLimits: no client access
+    // (covered by the default deny above).
+  }
+}
