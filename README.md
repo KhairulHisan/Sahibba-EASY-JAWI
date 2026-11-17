@@ -63,7 +63,7 @@ npm run tiles:derive
 
 ## Bina & deploy
 
-Multiplayer: ikut [`docs/DEPLOY.md`](docs/DEPLOY.md). Tanpa konfigurasi Firebase, binaan tetap berfungsi sepenuhnya untuk Single Player.
+Multiplayer: ikut [`docs/DEPLOY.md`](docs/DEPLOY.md) (perlu pelan Blaze). Tanpa Blaze: `npm run build:single` + `firebase deploy --only hosting` — Single Player penuh, butang Multiplayer dimatikan dengan jujur.
 
 ### Single Player sahaja (tiada pelayan diperlukan)
 

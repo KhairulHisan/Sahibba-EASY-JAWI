@@ -23,9 +23,9 @@ function NotConfigured() {
           <div>
             <h2 className="font-display text-xl font-semibold">Belum disambungkan ke pelayan</h2>
             <p className="mt-1 text-ink-soft">
-              Mod berbilang pemain (2–4 peranti) memerlukan pelayan Firebase untuk mengesahkan setiap langkah, menyimpan rak peribadi secara
-              rahsia dan menyegerakkan giliran. Binaan ini (cth. pratonton satu fail) <b>tidak disambungkan</b> kepada projek Firebase, jadi
-              butang bilik dimatikan.
+              Mod berbilang pemain (2–4 peranti) memerlukan pelayan permainan untuk mengesahkan setiap langkah, menyimpan rak peribadi secara
+              rahsia dan menyegerakkan giliran. Pelayan itu <b>belum diaktifkan</b> pada laman ini, jadi butang bilik dimatikan. Single Player
+              berfungsi sepenuhnya.
             </p>
           </div>
         </div>
@@ -41,7 +41,7 @@ function NotConfigured() {
             </button>
           </div>
           <p id="mp-why" className="mb-3 text-sm font-semibold text-coral-700">
-            Dimatikan: binaan ini tiada konfigurasi Firebase.
+            Dimatikan: pelayan Multiplayer belum diaktifkan.
           </p>
           <ul className="grid gap-2 text-sm text-ink-soft">
             <li>• Hos memilih kod bilik <b>4 digit</b> (cth. 0427 — sifar di hadapan dikekalkan), tahap, peraturan dan had giliran.</li>

@@ -19,8 +19,12 @@ const config = MP_EMULATOR
       appId: env.VITE_FIREBASE_APP_ID ?? '',
     };
 
-/** True when this build can reach a multiplayer server (real project or emulator). */
-export const MULTIPLAYER_ENABLED = env.VITE_EMBEDDED !== '1' && Boolean(config.projectId && config.apiKey);
+/**
+ * True when this build can reach a multiplayer server (real project or emulator).
+ * `npm run build:single` (mode "single") turns it off for hosting without the
+ * Blaze plan, so no room button pretends to work.
+ */
+export const MULTIPLAYER_ENABLED = env.VITE_EMBEDDED !== '1' && env.MODE !== 'single' && Boolean(config.projectId && config.apiKey);
 export const FUNCTIONS_REGION = 'asia-southeast1';
 
 export interface FirebaseHandles {

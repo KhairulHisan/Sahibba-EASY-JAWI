@@ -7,6 +7,39 @@ Authentication (tanpa nama), Cloud Firestore, Cloud Functions (2nd gen) dan — 
 > untuk penggunaan bilik darjah, tetapi kad pembayaran perlu didaftarkan dan caj boleh berlaku jika penggunaan
 > melebihi kuota. Tetapkan **amaran belanjawan** (Google Cloud Console → Billing → Budgets & alerts) sebelum mula.
 
+## 0. Tanpa pelan Blaze — Single Player sahaja (percuma)
+
+Pelan percuma **Spark** tidak membenarkan Cloud Functions, jadi Multiplayer tidak boleh berjalan. Laman web dan
+Single Player masih boleh dipasang secara percuma. Gunakan binaan khas yang mematikan butang Multiplayer dengan
+jujur (skrin Multiplayer memaparkan "Belum disambungkan ke pelayan"):
+
+```bash
+npm install -g firebase-tools
+```
+
+```bash
+firebase login
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run build:single
+```
+
+```bash
+firebase deploy --only hosting
+```
+
+Laman: <https://sahibba-easy-jawi.web.app>. Had Hosting pelan Spark (ditetapkan Google, boleh berubah) termasuk
+pindahan data harian; setiap peranti baharu memuat turun ≈1.5 MB sekali (kemudian dicache oleh service worker).
+Jika had itu dicapai, laman berhenti dihidangkan sehingga hari berikutnya.
+
+Untuk menghidupkan Multiplayer kemudian: naik taraf ke Blaze, kemudian ikut langkah 1–4 di bawah
+(`npm run build`, bukan `build:single`).
+
 ## 1. Sediakan projek (sekali sahaja)
 
 1. Cipta projek di <https://console.firebase.google.com> (cth. `easy-jawi-sekolah`).
