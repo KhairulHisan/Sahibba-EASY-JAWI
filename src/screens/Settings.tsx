@@ -6,6 +6,8 @@ import { SOUND_LABELS, sound, type SoundId } from '../lib/audio';
 import { fx } from '../lib/feedback';
 import { useHistory } from '../state/history';
 import { useSingle } from '../features/single/store';
+import { useDictCache } from '../features/dictionary/cacheStore';
+import { ONLINE_DICTIONARY_AVAILABLE } from '../features/dictionary/service';
 import { sanitizeNickname, useSettings, type MotionPref } from '../state/settings';
 
 export function SettingsScreen() {
@@ -14,6 +16,8 @@ export function SettingsScreen() {
   const abandon = useSingle((g) => g.abandon);
   const [confirm, setConfirm] = useState(false);
   const [preview, setPreview] = useState<SoundId>('word-valid');
+  const cached = useDictCache((c) => Object.keys(c.entries).length);
+  const clearDictCache = useDictCache((c) => c.clear);
 
   return (
     <div className="app-bg min-h-full overflow-y-auto" data-testid="settings">
@@ -91,6 +95,29 @@ export function SettingsScreen() {
           <Toggle label="Tunjuk nama huruf pada jubin rak" checked={s.showLetterNames} onChange={(v) => s.set({ showLetterNames: v })} />
         </section>
 
+        <section className="card grid gap-3 p-4" aria-labelledby="kamus-online" data-testid="smart-dictionary-settings">
+          <h2 id="kamus-online" className="font-display text-lg font-semibold">
+            Kamus Online Pintar <span className="text-sm font-bold text-ink-soft">(Single Player)</span>
+          </h2>
+          <Toggle
+            label="Semak perkataan baharu dalam talian"
+            checked={s.smartDictionary && ONLINE_DICTIONARY_AVAILABLE}
+            disabled={!ONLINE_DICTIONARY_AVAILABLE}
+            onChange={(v) => s.set({ smartDictionary: v })}
+            testId="toggle-smart-dictionary"
+          />
+          <p className="text-sm text-ink-soft">
+            {ONLINE_DICTIONARY_AVAILABLE
+              ? 'Jika perkataan tiada dalam kamus permainan, ia disemak dalam kamus pusat yang disahkan pentadbir (dan penyedia kamus berlesen jika disambungkan). Hanya perkataan yang disahkan diberi markah. Perkataan yang belum ditemui boleh dicadangkan untuk disemak. Perlukan Internet; tidak digunakan dalam Multiplayer.'
+              : 'Tidak tersedia dalam binaan ini (tiada sambungan pelayan).'}
+          </p>
+          {ONLINE_DICTIONARY_AVAILABLE && (
+            <p className="text-xs text-ink-soft">
+              Data dihantar: perkataan yang disemak dan ID pemain tanpa nama sahaja. Keputusan yang disahkan disimpan pada peranti ini selama 3 hari ({cached} perkataan).
+            </p>
+          )}
+        </section>
+
         <section className="card grid gap-3 p-4" aria-labelledby="par">
           <h2 id="par" className="font-display text-lg font-semibold">
             Ibu bapa & guru
@@ -122,6 +149,7 @@ export function SettingsScreen() {
         onCancel={() => setConfirm(false)}
         onConfirm={() => {
           clearHistory();
+          clearDictCache();
           abandon();
           s.reset();
           setConfirm(false);
@@ -131,14 +159,15 @@ export function SettingsScreen() {
   );
 }
 
-function Toggle({ label, checked, onChange, testId }: { label: string; checked: boolean; onChange: (v: boolean) => void; testId?: string }) {
+function Toggle({ label, checked, onChange, testId, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; testId?: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex min-h-11 items-center justify-between gap-3 text-left font-semibold"
+      className="flex min-h-11 items-center justify-between gap-3 text-left font-semibold disabled:opacity-50"
       data-testid={testId}
     >
       {label}

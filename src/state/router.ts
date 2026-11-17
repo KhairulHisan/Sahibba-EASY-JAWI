@@ -12,7 +12,8 @@ export type Route =
   | 'kamus'
   | 'tetapan'
   | 'sejarah'
-  | 'guru';
+  | 'guru'
+  | 'pentadbir';
 
 /** Plain `#name` hashes (no slash) so links survive embedded viewers; `#/name` is still accepted. */
 const PATHS: Record<Route, string> = {
@@ -28,6 +29,7 @@ const PATHS: Record<Route, string> = {
   tetapan: 'tetapan',
   sejarah: 'sejarah',
   guru: 'guru',
+  pentadbir: 'pentadbir',
 };
 
 const BY_PATH = new Map(Object.entries(PATHS).map(([r, p]) => [p, r as Route]));

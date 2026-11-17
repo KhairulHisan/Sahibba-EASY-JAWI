@@ -21,9 +21,15 @@ import {
   requestHint,
   resign,
   runBotTurn,
-  submitPlay,
+  submitPlayChecked,
   swapTiles,
 } from '../features/single/controller';
+import { knownVerified, useDictCache } from '../features/dictionary/cacheStore';
+import { SUGGEST_MESSAGE, suggestWord, type SuggestResult } from '../features/dictionary/firebaseBackend';
+import { OnlineCheckPanel, type OnlineCheckState } from '../features/dictionary/OnlineCheckPanel';
+import { lexiconWithOnline } from '../features/dictionary/preparePlay';
+import { ONLINE_DICTIONARY_AVAILABLE, dictionaryChecker } from '../features/dictionary/service';
+import { messageFor, type WordCheck } from '../dictionary/protocol';
 import { BOT_PERSONA, HINT_LIMIT, HUMAN_ID, orderedRack, useSingle } from '../features/single/store';
 import { SwapSheet } from '../features/play/SwapSheet';
 import { useTileTable } from '../features/play/useTileTable';
@@ -69,7 +75,14 @@ function ActiveGame() {
   const setRackOrder = useSingle((s) => s.setRackOrder);
   const settings = useSettings();
 
-  const lexicon = useMemo(() => activeLexicon(), [packIds]);
+  const baseLexicon = useMemo(() => activeLexicon(), [packIds]);
+  // Smart Online Dictionary (Single Player only): words already verified online count as known.
+  const smartOn = settings.smartDictionary && ONLINE_DICTIONARY_AVAILABLE;
+  const dictEntries = useDictCache((c) => c.entries);
+  const lexicon = useMemo(() => (smartOn ? lexiconWithOnline(baseLexicon, knownVerified(dictEntries)) : baseLexicon), [smartOn, baseLexicon, dictEntries]);
+  const [check, setCheck] = useState<OnlineCheckState | null>(null);
+  const [suggestState, setSuggestState] = useState<Record<string, 'sending' | SuggestResult>>({});
+  const checking = check?.phase === 'checking';
   const layout = getLayout(game.rules.layoutId);
   const humanIdx = game.players.findIndex((p) => p.id === HUMAN_ID);
   const human = game.players[humanIdx]!;
@@ -102,8 +115,8 @@ function ActiveGame() {
     layout,
     board: game.board,
     rack: human.rack,
-    isYourTurn,
-    interactive: !paused && game.phase === 'active',
+    isYourTurn: isYourTurn && !checking,
+    interactive: !paused && !checking && game.phase === 'active',
     draft,
     setDraft,
     rackOrder,
@@ -146,14 +159,71 @@ function ActiveGame() {
     { id: botPlayer.id, name: persona.name, initial: persona.initial, tone: persona.tone, isYou: false },
   ];
 
-  const onSubmit = () => {
-    const res = submitPlay();
-    if (!res.ok) {
-      table.bumpWobble();
-      fx('word-invalid');
-      toast({ tone: 'coral', content: res.error.message }, 3200);
-    } else setSelected(null);
+  // ---- SAHKAN (with the optional Smart Online Dictionary) -------------------
+  const submitting = useRef(false);
+  const abortCheck = useRef<AbortController | null>(null);
+  const closeCheck = useCallback(() => {
+    setCheck(null);
+    setSuggestState({});
+  }, []);
+  const onSubmit = async (fresh = false) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    const ctl = new AbortController();
+    abortCheck.current = ctl;
+    try {
+      const out = await submitPlayChecked({
+        signal: ctl.signal,
+        fresh,
+        onChecking: (words) => {
+          setSuggestState({});
+          setCheck({ phase: 'checking', words });
+          fx('bot-thinking');
+        },
+      });
+      if (!mounted.current) return;
+      if (out.kind === 'played') {
+        closeCheck();
+        setSelected(null);
+      } else if (out.kind === 'blocked') {
+        setCheck({ phase: 'result', checks: out.checks });
+        table.bumpWobble();
+        fx(out.checks.some((c) => c.status === 'SERVICE_UNAVAILABLE') ? 'error' : 'word-invalid');
+      } else if (out.kind === 'rejected') {
+        closeCheck();
+        table.bumpWobble();
+        fx('word-invalid');
+        toast({ tone: 'coral', content: out.error.message }, 3200);
+      } else closeCheck();
+    } finally {
+      submitting.current = false;
+      abortCheck.current = null;
+    }
   };
+
+  const onSuggest = async (c: WordCheck) => {
+    setSuggestState((s) => ({ ...s, [c.key]: 'sending' }));
+    const context = check?.phase === 'result' ? check.checks.map((x) => x.key) : [];
+    const r = await suggestWord(c.key, context);
+    if (!mounted.current) return;
+    setSuggestState((s) => ({ ...s, [c.key]: r }));
+    toast({ tone: r === 'sent' ? 'jade' : r === 'error' ? 'coral' : 'navy', content: SUGGEST_MESSAGE[r] }, 3800);
+    if (r === 'sent' || r === 'already') {
+      dictionaryChecker().markPending(c.word, c.key);
+      setCheck((cur) =>
+        cur?.phase === 'result'
+          ? { phase: 'result', checks: cur.checks.map((x) => (x.key === c.key ? { ...x, status: 'PENDING_REVIEW', message: messageFor('PENDING_REVIEW') } : x)) }
+          : cur,
+      );
+    }
+  };
+
+  // The result panel belongs to the move it judged: moving a tile or a new turn closes it.
+  const checkRef = useRef(check);
+  checkRef.current = check;
+  useEffect(() => {
+    if (checkRef.current?.phase === 'result') closeCheck();
+  }, [draft, game.version, closeCheck]);
 
   const onHint = async () => {
     if (hintLoading) return;
@@ -202,6 +272,11 @@ function ActiveGame() {
               <JawiText text={main.text} className="text-2xl leading-[1.4] font-bold" />
               <span className="rounded-lg bg-white/20 px-1.5 font-display">+{ev.score}</span>
               {ev.allTilesBonus && <span className="rounded-lg bg-mango-400 px-1.5 text-ink">7 jubin!</span>}
+              {notice.byHuman && useSingle.getState().onlineLog.some((l) => l.moveIndex === useSingle.getState().game!.moves.length - 1) && (
+                <span className="rounded-lg bg-white/20 px-1.5 text-xs" data-testid="online-verified-badge">
+                  ✓ Kamus Online
+                </span>
+              )}
             </span>
           ),
         },
@@ -252,9 +327,10 @@ function ActiveGame() {
     remainingOnPause.current = null;
     setTimeLeft(turnSeconds);
   }, [timerOn, isYourTurn, turnSeconds, game.version]);
+  const frozen = paused || checking; // a dictionary lookup never costs the player time
   useEffect(() => {
     if (deadline.current === null) return;
-    if (paused) {
+    if (frozen) {
       remainingOnPause.current ??= Math.max(0, deadline.current - Date.now());
       return;
     }
@@ -282,7 +358,7 @@ function ActiveGame() {
     tick();
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
-  }, [paused, isYourTurn, timerOn, game.version, setDraft]);
+  }, [frozen, isYourTurn, timerOn, game.version, setDraft]);
   useEffect(() => {
     const onVis = () => {
       if (document.hidden && timerOn) setPaused(true);
@@ -347,7 +423,16 @@ function ActiveGame() {
       {/* Controls column */}
       <div className={`safe-bottom flex flex-col gap-1.5 px-2 pt-1.5 ${wide ? 'w-[min(440px,46%)] justify-center overflow-y-auto py-3' : ''}`}>
         {wide && hud}
-        {hint ? (
+        {check ? (
+          <OnlineCheckPanel
+            state={check}
+            suggest={suggestState}
+            onCancel={() => abortCheck.current?.abort()}
+            onRetry={() => void onSubmit(true)}
+            onClose={closeCheck}
+            onSuggest={(c) => void onSuggest(c)}
+          />
+        ) : hint ? (
           <div className="flex min-h-[64px] items-center gap-2 rounded-2xl border-2 border-jade-500 bg-jade-100 px-3 py-1.5" data-testid="hint-panel">
             <Icon name="bulb" className="shrink-0 text-jade-700" />
             <div className="min-w-0 flex-1">
@@ -367,7 +452,7 @@ function ActiveGame() {
             </button>
           </div>
         ) : (
-          <WordPreview evaluation={evaluation} isYourTurn={isYourTurn} waiting={waiting} lastWord={lastWord} onShowWord={setWordShown} />
+          <WordPreview evaluation={evaluation} isYourTurn={isYourTurn} waiting={waiting} lastWord={lastWord} onShowWord={setWordShown} onlineCheck={smartOn} />
         )}
         <div ref={rackBox} className={paused ? 'invisible' : ''}>
           <TileRack
@@ -389,7 +474,7 @@ function ActiveGame() {
               sub: validDraft.length ? 'tarik balik' : 'kocok rak',
               icon: validDraft.length ? 'undo' : 'shuffle',
               onClick: recallOrShuffle,
-              disabled: paused || game.phase !== 'active',
+              disabled: paused || checking || game.phase !== 'active',
             },
             {
               id: 'tukar',
@@ -399,7 +484,7 @@ function ActiveGame() {
                 setDraft([]);
                 setSwapOpen(true);
               },
-              disabled: !isYourTurn || paused,
+              disabled: !isYourTurn || paused || checking,
               disabledReason: 'Bukan giliran anda',
             },
             {
@@ -407,17 +492,17 @@ function ActiveGame() {
               label: hintLoading ? 'MENCARI…' : 'BANTUAN',
               icon: 'bulb',
               onClick: () => void onHint(),
-              disabled: !isYourTurn || paused || hintsLeft === 0 || hintLoading,
+              disabled: !isYourTurn || paused || checking || hintsLeft === 0 || hintLoading,
               disabledReason: hintsLeft === 0 ? 'Bantuan sudah habis' : 'Bukan giliran anda',
               badge: hintsLeft === null ? '∞' : String(hintsLeft),
             },
             {
               id: 'sahkan',
-              label: 'SAHKAN',
+              label: checking ? 'SEMAK…' : 'SAHKAN',
               icon: 'check',
               primary: true,
-              onClick: onSubmit,
-              disabled: !isYourTurn || validDraft.length === 0 || paused,
+              onClick: () => void onSubmit(),
+              disabled: !isYourTurn || validDraft.length === 0 || paused || checking,
               disabledReason: !isYourTurn ? 'Bukan giliran anda' : 'Letakkan jubin di papan dahulu',
             },
             { id: 'menu', label: 'MENU', icon: 'menu', onClick: () => setMenuOpen(true) },
@@ -482,6 +567,9 @@ function ActiveGame() {
             }}
           />
           <MenuItem icon={settings.soundOn ? 'sound' : 'mute'} label={settings.soundOn ? 'Bunyi: Hidup' : 'Bunyi: Senyap'} onClick={() => settings.set({ soundOn: !settings.soundOn })} />
+          {ONLINE_DICTIONARY_AVAILABLE && (
+            <MenuItem icon="search" label={smartOn ? 'Kamus Online Pintar: Hidup' : 'Kamus Online Pintar: Mati'} onClick={() => settings.set({ smartDictionary: !settings.smartDictionary })} />
+          )}
           <MenuItem icon="book" label="Kamus Jawi" onClick={() => navigate('kamus')} />
           <MenuItem icon="info" label="Cara bermain" onClick={() => navigate('tutorial')} />
           <MenuItem icon="gear" label="Tetapan" onClick={() => navigate('tetapan')} />

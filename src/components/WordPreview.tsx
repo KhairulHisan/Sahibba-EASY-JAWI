@@ -14,12 +14,15 @@ export function WordPreview({
   waiting,
   lastWord,
   onShowWord,
+  onlineCheck = false,
 }: {
   evaluation: PlayEvaluation | null;
   isYourTurn: boolean;
   waiting: string | null;
   lastWord: { text: string; score: number; who: string } | null;
   onShowWord: (text: string) => void;
+  /** Smart Online Dictionary is on: unknown words will be checked online on SAHKAN. */
+  onlineCheck?: boolean;
 }) {
   let body;
   let key: string;
@@ -67,10 +70,15 @@ export function WordPreview({
         <div className="min-w-0">
           {unknown ? (
             <>
-              <div className="font-bold">Ejaan belum ditemui dalam kamus</div>
+              <div className="font-bold">{onlineCheck ? 'Tiada dalam kamus permainan' : 'Ejaan belum ditemui dalam kamus'}</div>
               <div className="flex flex-wrap gap-2">
                 {evaluation.error.words?.map((w) => <JawiText key={w} text={w} className="text-2xl leading-[1.5] font-bold" />)}
               </div>
+              {onlineCheck && (
+                <div className="text-xs font-bold text-navy-800" data-testid="preview-online-hint">
+                  Tekan SAHKAN untuk menyemak Kamus Online.
+                </div>
+              )}
             </>
           ) : (
             <div className="font-bold" data-testid="preview-error">

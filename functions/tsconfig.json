@@ -13,5 +13,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["src", "../src/engine", "../src/data", "../src/lib/nickname.ts", "../src/multiplayer"]
+  "include": ["src", "../src/engine", "../src/data", "../src/lib/nickname.ts", "../src/multiplayer", "../src/dictionary"]
 }

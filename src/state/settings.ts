@@ -14,6 +14,8 @@ export interface Settings {
   showLetterNames: boolean;
   playerName: string;
   seenTutorial: boolean;
+  /** Smart Online Jawi Dictionary for Single Player (needs Internet). Off by default. */
+  smartDictionary: boolean;
 }
 
 interface SettingsStore extends Settings {
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showLetterNames: false,
   playerName: 'Pemain',
   seenTutorial: false,
+  smartDictionary: false,
 };
 
 export const useSettings = create<SettingsStore>()(

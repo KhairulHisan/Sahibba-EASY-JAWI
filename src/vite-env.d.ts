@@ -10,4 +10,8 @@ interface ImportMetaEnv {
   /** "1" = use the local Firebase Emulator Suite. */
   readonly VITE_FIREBASE_EMULATOR?: string;
   readonly VITE_FIREBASE_EMULATOR_HOST?: string;
+  /** "1" = this build's project has Cloud Functions deployed (Blaze plan). */
+  readonly VITE_CLOUD_FUNCTIONS?: string;
+  /** reCAPTCHA Enterprise site key for Firebase App Check (optional). */
+  readonly VITE_APPCHECK_SITE_KEY?: string;
 }

@@ -200,9 +200,11 @@ src/
     single/      store, controller, bot Web Worker, seret & lepas
     play/        useTileTable (meja jubin dikongsi SP/MP), SwapSheet, rackOrder
     multiplayer/ MultiplayerHome, Lobby, RoomScreen, MultiplayerTable, MpResults, api, useRoom, session
+    dictionary/  Kamus Online Pintar: checker, preparePlay (pagar markah), cacheStore, firebaseBackend, adminApi, OnlineCheckPanel
+  dictionary/    protocol.ts (kontrak kamus online klien/pelayan)
   multiplayer/   protocol.ts (kontrak klien/pelayan), view.ts
   lib/firebase.ts  SDK Firebase dimuat malas (hanya apabila Multiplayer dibuka)
-functions/src/   index.ts (Cloud Functions), rooms.ts (logik bilik tulen), repo.ts, firestoreRepo.ts
+functions/src/   index.ts (Cloud Functions), rooms.ts (logik bilik tulen), dictionary.ts (validateJawiWordOnline), repo.ts, firestoreRepo.ts
 firestore.rules  firestore.indexes.json  firebase.json
 scripts/         derive-tiles.ts validate-lexicon.ts build-embedded.ts export-review.ts apply-review.ts
 tests/
@@ -210,7 +212,7 @@ tests/
   emulator/      Vitest + Emulator Suite — peraturan, Functions, pemadaman
   e2e/           Playwright — 360/390/768/1280px
   e2e-mp/        Playwright berbilang konteks terhadap emulator
-docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md DEPLOY.md semakan/
+docs/            BLUEPRINT.md DELIVERY_CHECKLIST.md DEPLOY.md KAMUS_ONLINE.md semakan/
 ```
 
 ---

@@ -11,6 +11,7 @@ Permainan papan perkataan Jawi asli (genre Scrabble/Sahibba) untuk murid, guru d
 | UI responsif 360 → 1280px, PWA, bunyi, animasi | ✅ Siap & diuji (Playwright) |
 | Tutorial interaktif, Kamus, Sejarah, Mod Guru | ✅ Siap & diuji |
 | **Multiplayer 2–4 peranti** (kod bilik 4 digit, rak peribadi, pelayan mengesahkan setiap langkah) | ✅ Siap & diuji terhadap Firebase Emulator (4 pelayar serentak). Perlu **projek Firebase anda sendiri** untuk digunakan — [`docs/DEPLOY.md`](docs/DEPLOY.md) |
+| **Kamus Online Pintar** (Single Player): semak perkataan baharu dalam kamus pusat yang disahkan pentadbir, cadang perkataan, halaman pentadbir | ✅ Siap & diuji terhadap Firebase Emulator; belum di-deploy; tiada penyedia kamus luar berlesen lagi — [`docs/KAMUS_ONLINE.md`](docs/KAMUS_ONLINE.md) |
 | Kamus permulaan (1,375 perkataan, termasuk kata berimbuhan) | ⚠️ Disemak AI (9 ejaan dibetulkan); **BELUM DISAHKAN GURU** — lihat `docs/semakan/untuk-guru.csv` |
 
 Butiran: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) · Senarai semak: [`docs/DELIVERY_CHECKLIST.md`](docs/DELIVERY_CHECKLIST.md)
@@ -39,7 +40,7 @@ npm test
 npm run build && npm run test:e2e
 ```
 
-- `npm test` — 93 ujian unit Vitest: normalisasi Unicode Jawi, arah RTL, semua penolakan langkah, pemarkahan, joker, bonus 7 jubin, tamat permainan/seri, idempotensi & versi, kamus, taburan jubin, permainan penuh bot-lawan-bot (3 tahap, 2–4 pemain), logik bilik multiplayer.
+- `npm test` — 123 ujian unit Vitest: normalisasi Unicode Jawi, arah RTL, semua penolakan langkah, pemarkahan, joker, bonus 7 jubin, tamat permainan/seri, idempotensi & versi, kamus, taburan jubin, permainan penuh bot-lawan-bot (3 tahap, 2–4 pemain), logik bilik multiplayer, Kamus Online Pintar (status, perlindungan markah, cache, had kadar, adapter penyedia).
 - `npm run test:emulator` / `npm run test:e2e:mp` — Multiplayer terhadap Firebase Emulator Suite (perlu Java 11+ dan `npm --prefix functions install`). Lihat [`docs/DEPLOY.md`](docs/DEPLOY.md).
 - `npm run test:e2e` — Playwright pada 360/390/768/1280px terhadap binaan produksi (`vite preview`). Jika pelayar Playwright belum dipasang: `npx playwright install chromium`.
 

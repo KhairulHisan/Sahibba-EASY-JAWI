@@ -8,6 +8,7 @@ import { useRoute, type Route } from './state/router';
 import { useSettings } from './state/settings';
 import { DifficultySelect } from './screens/DifficultySelect';
 import { Dictionary } from './screens/Dictionary';
+import { DictionaryAdmin } from './screens/DictionaryAdmin';
 import { GameScreen } from './screens/GameScreen';
 import { HistoryScreen } from './screens/History';
 import { Home } from './screens/Home';
@@ -32,6 +33,7 @@ const SCREENS: Record<Route, () => React.ReactNode> = {
   tetapan: SettingsScreen,
   sejarah: HistoryScreen,
   guru: Teacher,
+  pentadbir: DictionaryAdmin,
 };
 
 const TITLES: Record<Route, string> = {
@@ -47,6 +49,7 @@ const TITLES: Record<Route, string> = {
   tetapan: 'Tetapan — EASY JAWI',
   sejarah: 'Sejarah — EASY JAWI',
   guru: 'Mod Guru — EASY JAWI',
+  pentadbir: 'Pentadbir Kamus Online — EASY JAWI',
 };
 
 export function App() {

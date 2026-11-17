@@ -1,30 +1,39 @@
 /**
- * Lazy Firebase client. The SDK is only downloaded when a player opens
- * multiplayer, so single player stays small and fully offline.
+ * Lazy Firebase client. The SDK is only downloaded when a feature that needs
+ * it is used (Multiplayer, Smart Online Dictionary, admin page), so Single
+ * Player stays small and fully offline.
+ *
+ * Capability flags
+ *   FIREBASE_ENABLED         Auth + Firestore reachable (works on the free Spark plan)
+ *   CLOUD_FUNCTIONS_ENABLED  Cloud Functions deployed (Blaze plan): `npm run build`
+ *   MULTIPLAYER_ENABLED      both of the above
  */
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { Functions } from 'firebase/functions';
+import { PROJECT_FIREBASE_CONFIG } from './firebaseConfig';
 
 const env = import.meta.env;
-export const MP_EMULATOR = env.VITE_FIREBASE_EMULATOR === '1';
+// Direct `import.meta.env.X` access so the build replaces it and drops emulator-only code.
+export const MP_EMULATOR = import.meta.env.VITE_FIREBASE_EMULATOR === '1';
+
 // Emulator builds always use the offline demo project, never the real one.
 const config = MP_EMULATOR
   ? { apiKey: 'demo-key', authDomain: undefined, projectId: 'demo-easy-jawi', appId: 'demo-app' }
   : {
-      apiKey: env.VITE_FIREBASE_API_KEY ?? '',
-      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || undefined,
-      projectId: env.VITE_FIREBASE_PROJECT_ID ?? '',
-      appId: env.VITE_FIREBASE_APP_ID ?? '',
+      apiKey: env.VITE_FIREBASE_API_KEY || PROJECT_FIREBASE_CONFIG.apiKey,
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || PROJECT_FIREBASE_CONFIG.authDomain,
+      projectId: env.VITE_FIREBASE_PROJECT_ID || PROJECT_FIREBASE_CONFIG.projectId,
+      appId: env.VITE_FIREBASE_APP_ID || PROJECT_FIREBASE_CONFIG.appId,
     };
 
-/**
- * True when this build can reach a multiplayer server (real project or emulator).
- * `npm run build:single` (mode "single") turns it off for hosting without the
- * Blaze plan, so no room button pretends to work.
- */
-export const MULTIPLAYER_ENABLED = env.VITE_EMBEDDED !== '1' && env.MODE !== 'single' && Boolean(config.projectId && config.apiKey);
+/** Firebase can be reached at all (not the offline single-file build). */
+export const FIREBASE_ENABLED = env.VITE_EMBEDDED !== '1' && Boolean(config.projectId && config.apiKey);
+/** Cloud Functions are deployed for this build's project (Blaze plan) or emulated. */
+export const CLOUD_FUNCTIONS_ENABLED = FIREBASE_ENABLED && (MP_EMULATOR || (env.VITE_CLOUD_FUNCTIONS === '1' && env.MODE !== 'single'));
+/** Multiplayer needs the authoritative game server (Cloud Functions). */
+export const MULTIPLAYER_ENABLED = CLOUD_FUNCTIONS_ENABLED;
 export const FUNCTIONS_REGION = 'asia-southeast1';
 
 export interface FirebaseHandles {
@@ -32,15 +41,17 @@ export interface FirebaseHandles {
   auth: Auth;
   db: Firestore;
   fns: Functions;
-  uid: string;
+  /** Current user's uid (anonymous player, or a signed-in admin). */
+  readonly uid: string;
   fs: typeof import('firebase/firestore');
   fn: typeof import('firebase/functions');
+  authMod: typeof import('firebase/auth');
 }
 
 let ready: Promise<FirebaseHandles> | null = null;
 
 export function firebase(): Promise<FirebaseHandles> {
-  if (!MULTIPLAYER_ENABLED) return Promise.reject(new Error('Multiplayer belum dikonfigurasi.'));
+  if (!FIREBASE_ENABLED) return Promise.reject(new Error('Firebase tidak dikonfigurasi dalam binaan ini.'));
   ready ??= (async () => {
     const [{ initializeApp }, authMod, fs, fn] = await Promise.all([
       import('firebase/app'),
@@ -49,6 +60,12 @@ export function firebase(): Promise<FirebaseHandles> {
       import('firebase/functions'),
     ]);
     const app = initializeApp(config);
+    // App Check (optional): proves requests come from this web app. Needs a
+    // reCAPTCHA Enterprise site key registered in the Firebase console.
+    if (!MP_EMULATOR && env.VITE_APPCHECK_SITE_KEY) {
+      const ac = await import('firebase/app-check');
+      ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(env.VITE_APPCHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
+    }
     const auth = authMod.getAuth(app);
     const db = fs.initializeFirestore(app, { localCache: fs.memoryLocalCache() });
     const fns = fn.getFunctions(app, FUNCTIONS_REGION);
@@ -60,8 +77,19 @@ export function firebase(): Promise<FirebaseHandles> {
     }
     // Anonymous sign-in: no personal data. The same uid survives a page refresh.
     await auth.authStateReady();
-    const user = auth.currentUser ?? (await authMod.signInAnonymously(auth)).user;
-    return { app, auth, db, fns, uid: user.uid, fs, fn };
+    if (!auth.currentUser) await authMod.signInAnonymously(auth);
+    return {
+      app,
+      auth,
+      db,
+      fns,
+      get uid() {
+        return auth.currentUser?.uid ?? '';
+      },
+      fs,
+      fn,
+      authMod,
+    };
   })();
   ready.catch(() => (ready = null));
   return ready;

@@ -6,7 +6,13 @@
 import type { MoveCandidate } from '../../engine/bot';
 import { applyAction, evaluatePlay } from '../../engine/game';
 import { randomId } from '../../engine/rng';
-import type { ActionDraft, ActionResult, GameState } from '../../engine/types';
+import type { Lexicon } from '../../engine/dictionary';
+import type { ActionDraft, ActionResult, EngineError, GameState } from '../../engine/types';
+import type { WordCheck } from '../../dictionary/protocol';
+import { useSettings } from '../../state/settings';
+import { knownVerified, useDictCache } from '../dictionary/cacheStore';
+import { preparePlay, type PreparedPlay } from '../dictionary/preparePlay';
+import { ONLINE_DICTIONARY_AVAILABLE, dictionaryChecker } from '../dictionary/service';
 import { lexiconFor } from '../../state/lexicon';
 import { computeBotMove, computeHint } from './botClient';
 import { useHistory, type MatchRecord } from '../../state/history';
@@ -16,10 +22,10 @@ export function activeLexicon() {
   return lexiconFor(useSingle.getState().packIds);
 }
 
-function dispatch(draft: ActionDraft, byHuman: boolean): ActionResult {
+function dispatch(draft: ActionDraft, byHuman: boolean, lexicon: Lexicon = activeLexicon()): ActionResult {
   const { game, commitState } = useSingle.getState();
   if (!game) return { ok: false, error: { code: 'GAME_FINISHED', message: 'Tiada permainan aktif.' } };
-  const res = applyAction(game, { ...draft, id: randomId('act-'), expectedVersion: game.version } as Parameters<typeof applyAction>[1], activeLexicon());
+  const res = applyAction(game, { ...draft, id: randomId('act-'), expectedVersion: game.version } as Parameters<typeof applyAction>[1], lexicon);
   if (res.ok) {
     commitState(res.state, { event: res.event, byHuman });
     if (res.state.phase === 'finished') recordResult(res.state);
@@ -32,6 +38,64 @@ export function submitPlay(): ActionResult {
   const res = dispatch({ type: 'PLAY', playerId: HUMAN_ID, placements: draft }, true);
   if (res.ok) setDraft([]);
   return res;
+}
+
+export type CheckedSubmit =
+  | { kind: 'played'; checks: WordCheck[] }
+  | { kind: 'rejected'; error: EngineError }
+  /** Online check finished but not every word is verified: nothing changed, tiles stay. */
+  | { kind: 'blocked'; error: EngineError; checks: WordCheck[] }
+  /** Cancelled, or the game/draft changed while checking: nothing applied. */
+  | { kind: 'stale' };
+
+/** Smart Online Dictionary switched on and usable in this build (Single Player only). */
+export function onlineDictionaryOn(): boolean {
+  return ONLINE_DICTIONARY_AVAILABLE && useSettings.getState().smartDictionary;
+}
+
+/**
+ * SAHKAN with the Smart Online Dictionary. Words missing from the local
+ * dictionary are checked online; the move is applied (and scored) only if
+ * every formed word is verified by an authoritative source. On anything else
+ * the game state, the draft and the turn stay exactly as they were.
+ */
+export async function submitPlayChecked(opts: { signal?: AbortSignal; fresh?: boolean; onChecking?: (words: string[]) => void } = {}): Promise<CheckedSubmit> {
+  const { game, draft } = useSingle.getState();
+  if (!game) return { kind: 'rejected', error: { code: 'GAME_FINISHED', message: 'Tiada permainan aktif.' } };
+  const humanIdx = game.players.findIndex((p) => p.id === HUMAN_ID);
+  const smart = onlineDictionaryOn();
+  const version = game.version;
+  const draftKey = JSON.stringify(draft);
+  let prep: PreparedPlay;
+  try {
+    prep = await preparePlay({
+      game,
+      playerIndex: humanIdx,
+      placements: draft,
+      base: activeLexicon(),
+      known: smart ? knownVerified(useDictCache.getState().entries) : [],
+      check: smart
+        ? (words) => {
+            opts.onChecking?.(words);
+            return dictionaryChecker().checkWords(words, { signal: opts.signal, fresh: opts.fresh });
+          }
+        : null,
+    });
+  } catch {
+    return { kind: 'stale' }; // cancelled
+  }
+  const now = useSingle.getState();
+  if (opts.signal?.aborted || now.game?.version !== version || JSON.stringify(now.draft) !== draftKey) return { kind: 'stale' };
+  if (prep.kind === 'invalid') return { kind: 'rejected', error: prep.error };
+  if (prep.kind === 'blocked') return { kind: 'blocked', error: prep.error, checks: prep.checks };
+  const moveIndex = game.moves.length;
+  const res = dispatch({ type: 'PLAY', playerId: HUMAN_ID, placements: draft }, true, prep.lexicon);
+  if (!res.ok) return { kind: 'rejected', error: res.error };
+  now.setDraft([]);
+  // Keep the evidence of every online-verified word with the game.
+  const online = prep.checks.filter((c) => c.evidence?.method !== 'local');
+  if (online.length) useSingle.getState().logOnline(moveIndex, online);
+  return { kind: 'played', checks: prep.checks };
 }
 
 export function swapTiles(tileIds: string[]): ActionResult {

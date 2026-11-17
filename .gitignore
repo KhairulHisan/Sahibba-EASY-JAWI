@@ -9,6 +9,7 @@ playwright-report
 .env.*
 !.env.example
 !.env.production
+!functions/.env.demo-easy-jawi
 .DS_Store
 .firebase
 firebase-debug.log

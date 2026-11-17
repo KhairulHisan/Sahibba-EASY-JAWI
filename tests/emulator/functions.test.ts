@@ -151,3 +151,21 @@ describe('multiplayer over the emulator suite', () => {
     expect((await room(guest, roomId)).players.map((p) => p.uid)).toEqual([host.uid, guest.uid]);
   });
 });
+
+describe('validateJawiWordOnline over the emulator (emulator-only fake provider)', () => {
+  it('returns VALID / INVALID / NOT_FOUND with source + evidence, normalises input, and rejects bad input', async () => {
+    const p = await client();
+    const res = await p.call<{ results: { key: string; status: string; source?: { id: string; version: string }; evidence?: { method: string; reference?: string } }[]; provider: { configured: boolean } }>(
+      'validateJawiWordOnline',
+      { words: ['يا', 'يم', 'اس', 'ظا'] },
+    );
+    expect(res.provider.configured).toBe(true);
+    expect(res.results.map((r) => r.status)).toEqual(['SERVICE_UNAVAILABLE', 'SERVICE_UNAVAILABLE', 'SERVICE_UNAVAILABLE', 'SERVICE_UNAVAILABLE']); // one failing word fails the provider batch
+    const ok = await p.call<typeof res>('validateJawiWordOnline', { words: ['يا', 'يم', 'اس'] });
+    expect(ok.results.map((r) => r.status)).toEqual(['VALID', 'INVALID', 'NOT_FOUND']);
+    expect(ok.results[0]).toMatchObject({ source: { id: 'ujian-emulator', version: 'ujian-1' }, evidence: { method: 'provider', reference: 'ujian:يا' } });
+    expect((await failure(p.call('validateJawiWordOnline', { words: ['buku'] }))).reason).toBe('TIDAK_SAH');
+    // The server cache is not readable by clients.
+    expect((await failure(getDoc(doc(p.db, 'dictionaryCache', 'ujian-emulator__يا')))).code).toBe('permission-denied');
+  });
+});

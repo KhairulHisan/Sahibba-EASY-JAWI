@@ -9,9 +9,10 @@ Authentication (tanpa nama), Cloud Firestore, Cloud Functions (2nd gen) dan — 
 
 ## 0. Tanpa pelan Blaze — Single Player sahaja (percuma)
 
-Pelan percuma **Spark** tidak membenarkan Cloud Functions, jadi Multiplayer tidak boleh berjalan. Laman web dan
-Single Player masih boleh dipasang secara percuma. Gunakan binaan khas yang mematikan butang Multiplayer dengan
-jujur (skrin Multiplayer memaparkan "Belum disambungkan ke pelayan"):
+Pelan percuma **Spark** tidak membenarkan Cloud Functions, jadi Multiplayer tidak boleh berjalan. Laman web,
+Single Player dan **Kamus Online Pintar** (kamus pusat Firestore + cadangan pemain + halaman pentadbir) masih boleh
+dipasang secara percuma. Gunakan binaan khas yang mematikan butang Multiplayer dengan jujur (skrin Multiplayer
+memaparkan "Belum disambungkan ke pelayan"):
 
 ```bash
 npm install -g firebase-tools
@@ -30,8 +31,11 @@ npm run build:single
 ```
 
 ```bash
-firebase deploy --only hosting
+firebase deploy --only firestore,hosting
 ```
+
+`firestore` memasang peraturan keselamatan dan indeks (percuma, diperlukan oleh Kamus Online Pintar).
+Untuk halaman pentadbir kamus, ikut juga [`KAMUS_ONLINE.md` §5](KAMUS_ONLINE.md).
 
 Laman: <https://sahibba-easy-jawi.web.app>. Had Hosting pelan Spark (ditetapkan Google, boleh berubah) termasuk
 pindahan data harian; setiap peranti baharu memuat turun ≈1.5 MB sekali (kemudian dicache oleh service worker).
@@ -51,7 +55,8 @@ Untuk menghidupkan Multiplayer kemudian: naik taraf ke Blaze, kemudian ikut lang
 ## 2. Konfigurasi binaan
 
 Projek repo ini sudah dikonfigurasi untuk **`sahibba-easy-jawi`**:
-- `.env.production` — konfigurasi web app (dibaca oleh `npm run build`).
+- `src/lib/firebaseConfig.ts` — konfigurasi web app awam (boleh ditukar dengan `VITE_FIREBASE_*`).
+- `.env.production` — `VITE_CLOUD_FUNCTIONS=1` untuk `npm run build` (pelan Blaze: Multiplayer + fungsi kamus).
 - `.firebaserc` — `firebase deploy` menyasarkan `sahibba-easy-jawi` secara lalai.
 
 Untuk projek lain, tukar kedua-dua fail itu (atau `firebase use --add`). Nilai konfigurasi web **bukan rahsia** — ia
@@ -87,8 +92,8 @@ npm run build
 firebase deploy --only firestore,functions,hosting
 ```
 
-Ini memasang: peraturan + indeks Firestore, 11 Cloud Functions di `asia-southeast1` (10 boleh dipanggil +
-`closeExpiredRooms` setiap 30 minit), dan laman web daripada `dist/` ke <https://sahibba-easy-jawi.web.app>.
+Ini memasang: peraturan + indeks Firestore, 12 Cloud Functions di `asia-southeast1` (11 boleh dipanggil, termasuk
+`validateJawiWordOnline`, + `closeExpiredRooms` setiap 30 minit), dan laman web daripada `dist/` ke <https://sahibba-easy-jawi.web.app>.
 Deploy pertama Functions mengaktifkan beberapa API Google Cloud secara automatik (Cloud Build, Artifact Registry,
 Cloud Run, Eventarc, Cloud Scheduler) dan boleh mengambil 5–10 minit. Indeks komposit (`rooms: status + expiresAt`)
 mungkin mengambil beberapa minit lagi untuk siap.
@@ -103,8 +108,11 @@ Hos lain (Vercel/Netlify) juga boleh digunakan untuk laman web; Firestore dan Fu
 
 ## 5. Pengesyoran keselamatan
 
-- **App Check** (reCAPTCHA Enterprise / Play Integrity) — mengurangkan panggilan automatik ke Functions. Belum
-  diaktifkan dalam kod; aktifkan `enforceAppCheck: true` pada `onCall` selepas mendaftar App Check di konsol.
+- **App Check** (reCAPTCHA Enterprise) — mengurangkan panggilan automatik. Kod sudah sedia tetapi **mati secara lalai**:
+  daftar laman di Firebase console → App Check → reCAPTCHA Enterprise, letak kunci tapak dalam `VITE_APPCHECK_SITE_KEY`,
+  bina semula, kemudian `ENFORCE_APP_CHECK=true` dalam `functions/.env.sahibba-easy-jawi` (fungsi kamus) dan, akhir
+  sekali, "Enforce" untuk Firestore di konsol App Check. Jangan "Enforce" sebelum klien menghantar token — semua
+  permintaan akan ditolak.
 - Had kadar terbina: 6 bilik dicipta / 10 minit dan 12 cubaan sertai / 10 minit bagi setiap pengguna (cubaan
   kod salah turut dikira). Kod 4 digit **bukan kata laluan** — untuk kelas, aktifkan "Hos meluluskan setiap pemain".
 - Tiada sembang, tiada profil awam. Nama panggilan ditapis (huruf/nombor/ruang, maks 16 aksara, senarai kata kasar).

@@ -3,7 +3,7 @@
 Tarikh: 2026-11-16. Persekitaran ujian: Node 22, Chromium headless (Playwright 1.63), Linux.
 **PASS** = ujian automatik lulus (rujukan diberi) atau semakan tangkapan skrin yang dinyatakan. **NOT TESTED** = dilaksana tetapi tidak disahkan. **NOT IMPLEMENTED** = belum dibina.
 
-Keputusan terkini: `npm test` → **93/93 lulus** · `npm run test:e2e` → **67 lulus, 21 dilangkau dengan sengaja** (seret tetikus / papan kekunci / pemasa / permainan penuh hanya pada projek desktop) · `npm run test:emulator` → **9/9 lulus** · `npm run test:e2e:mp` → **4/4 lulus**.
+Keputusan terkini (2026-11-17): `npm test` → **123/123 lulus** · `npm run test:e2e` → **67 lulus, 21 dilangkau dengan sengaja** (seret tetikus / papan kekunci / pemasa / permainan penuh hanya pada projek desktop) · `npm run test:emulator` → **20/20 lulus** · `npm run test:e2e:mp` → **9/9 lulus** (4 Multiplayer + 5 Kamus Online).
 
 ## A. Single Player
 | Fungsi | Status | Bukti |
@@ -73,6 +73,35 @@ Diuji terhadap **Firebase Emulator Suite** (Auth, Firestore, Functions sebenar) 
 | Main semula dalam bilik yang sama | NOT IMPLEMENTED | Cipta bilik baharu (kod boleh diguna semula serta-merta) |
 | Binaan halaman tunggal (artifak) | Multiplayer dimatikan dengan jujur | Tiada konfigurasi Firebase dalam binaan itu |
 
+## E2. Kamus Online Pintar (Single Player) — `docs/KAMUS_ONLINE.md`
+Diuji terhadap Emulator Suite dengan **penyedia palsu khas emulator** — tiada penyedia sebenar, belum di-deploy.
+
+| Fungsi | Status | Bukti |
+|---|---|---|
+| Semua perkataan terbentuk disemak, termasuk perkataan bersilang; hanya yang tiada dalam kamus lokal dihantar | PASS | `tests/unit/dictionary.test.ts` (papan dengan 2 perkataan bersilang) |
+| Urutan: kamus lokal → cache → kamus pusat Firestore → fungsi → cadangan menunggu | PASS | `dictionary.test.ts` |
+| Status VALID / INVALID / NOT_FOUND / PENDING_REVIEW / SERVICE_UNAVAILABLE; NOT_FOUND ≠ ejaan salah | PASS | unit + `dictionary-server.test.ts` + `e2e-mp/dictionary.spec.ts` |
+| Perlindungan markah: hanya VALID berautoriti diberi markah; status lain / bukti palsu → langkah disekat, keadaan tidak berubah | PASS | `dictionary.test.ts` (4 status × perkataan bersilang, bukti palsu); E2E (markah 0, jubin kekal) |
+| Langkah tidak dimainkan dua kali (ketik dua kali, idempotensi, versi) | PASS | unit + E2E `dblclick` |
+| Sumber, versi dan bukti disimpan (cache peranti + log permainan) | PASS | E2E membaca `localStorage` |
+| Gangguan Internet → SERVICE_UNAVAILABLE, jubin & giliran kekal, Cuba lagi berjaya | PASS | E2E `setOffline` |
+| Tamat masa / penyedia gagal / jawapan cacat → SERVICE_UNAVAILABLE, tidak dicache | PASS | unit (klien + pelayan + `HttpJsonProvider`) |
+| Permintaan serentak dikongsi; had kadar peranti & pelayan | PASS | unit |
+| Normalisasi Unicode sama di klien & pelayan | PASS | unit |
+| Cadangkan Perkataan → PENDING_REVIEW; tidak ditambah automatik | PASS | E2E + peraturan |
+| Pentadbir: log masuk Google, senarai cadangan, lulus/tolak dengan sumber+edisi+bukti wajib, jejak audit | PASS (emulator) | E2E (log masuk emulator tanpa popup); `dictionary-rules.test.ts` |
+| Peraturan keselamatan (bukan pentadbir tidak boleh tulis; tanpa nama bukan pentadbir; kuota cadangan; cache pelayan tertutup) | PASS | `tests/emulator/dictionary-rules.test.ts` (10 ujian) |
+| Fungsi `validateJawiWordOnline` melalui SDK sebenar | PASS | `tests/emulator/functions.test.ts` |
+| Tetapan ON/OFF; OFF = tiada permintaan rangkaian | PASS | E2E (memantau permintaan) |
+| Tidak aktif dalam Multiplayer; bot & bantuan tidak berubah | PASS | Suite Multiplayer & Single Player lulus tanpa perubahan tingkah laku |
+| Kod khas emulator tiada dalam binaan produksi | PASS | `grep` pada `dist/` |
+| Binaan pelan percuma (`build:single`): kamus aktif, Multiplayer dimatikan jujur | PASS (manual) | Skrip Playwright |
+| Pemasa giliran dihentikan semasa semakan | NOT TESTED | Dilaksana (`GameScreen.tsx`, `frozen`) |
+| Popup log masuk Google sebenar / redirect pada telefon | NOT TESTED | Sandbox menyekat skrip Google; emulator menggunakan kelayakan ujian |
+| App Check | NOT TESTED | Kod sedia, mati secara lalai — perlu kunci reCAPTCHA Enterprise |
+| Penyedia kamus luar berlesen | NOT IMPLEMENTED (sengaja) | Tiada API yang dibenarkan; adapter + kontrak sedia (`KAMUS_ONLINE.md §8`) |
+| Deploy ke projek sebenar | NOT TESTED | Belum di-deploy (atas arahan) |
+
 ## F. Responsif & kebolehcapaian
 | Fungsi | Status | Bukti |
 |---|---|---|
@@ -99,3 +128,4 @@ Diuji terhadap **Firebase Emulator Suite** (Auth, Firestore, Functions sebenar) 
 1. **Semakan guru/DBP** untuk ejaan & makna 1,375 entri kamus (terutamanya ~250 kata berimbuhan) dan polisi kanonik huruf (`BLUEPRINT.md §3`).
 2. **Projek Firebase anda sendiri** (Auth tanpa nama, Firestore, Functions pada pelan Blaze, Hosting) untuk menghidupkan Multiplayer — ikut `docs/DEPLOY.md`; mungkin dikenakan kos.
 3. Ujian pada peranti Android/iOS sebenar.
+4. **Kamus Online Pintar**: lesen penyedia kamus luar (jika dikehendaki), aktifkan log masuk Google + senarai `admins`, App Check — `docs/KAMUS_ONLINE.md §5, §8`.

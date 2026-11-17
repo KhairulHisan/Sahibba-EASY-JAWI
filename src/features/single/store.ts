@@ -5,6 +5,7 @@ import { TILE_DISTRIBUTION } from '../../data';
 import { createGame } from '../../engine/game';
 import { randomId, secureSeed } from '../../engine/rng';
 import type { Difficulty, GameEvent, GameState, Placement } from '../../engine/types';
+import type { WordCheck } from '../../dictionary/protocol';
 
 export const HUMAN_ID = 'anda';
 export const BOT_ID = 'bot';
@@ -33,12 +34,15 @@ interface SingleStore {
   recordedResult: boolean;
   /** Transient (not persisted): last applied event for animations/toasts. */
   notice: AppliedNotice | null;
+  /** Evidence for words accepted via the Smart Online Dictionary, per move. */
+  onlineLog: { moveIndex: number; checks: WordCheck[] }[];
 
   startGame: (opts: { difficulty: Difficulty; playerName: string; turnSeconds: number | null; packIds: string[] }) => void;
   setDraft: (draft: Placement[]) => void;
   setRackOrder: (ids: string[]) => void;
   commitState: (game: GameState, notice: Omit<AppliedNotice, 'nonce'> | null) => void;
   useHint: () => void;
+  logOnline: (moveIndex: number, checks: WordCheck[]) => void;
   markRecorded: () => void;
   abandon: () => void;
 }
@@ -65,6 +69,7 @@ export const useSingle = create<SingleStore>()(
       packIds: [],
       recordedResult: false,
       notice: null,
+      onlineLog: [],
 
       startGame: ({ difficulty, playerName, turnSeconds, packIds }) => {
         const game = createGame({
@@ -86,6 +91,7 @@ export const useSingle = create<SingleStore>()(
           packIds,
           recordedResult: false,
           notice: null,
+          onlineLog: [],
         });
       },
       setDraft: (draft) => set({ draft }),
@@ -97,8 +103,9 @@ export const useSingle = create<SingleStore>()(
           rackOrder: syncOrder(game.players.find((p) => p.id === HUMAN_ID)?.rack ?? [], get().rackOrder),
         })),
       useHint: () => set((s) => ({ hintsUsed: s.hintsUsed + 1 })),
+      logOnline: (moveIndex, checks) => set((s) => ({ onlineLog: [...s.onlineLog, { moveIndex, checks }] })),
       markRecorded: () => set({ recordedResult: true }),
-      abandon: () => set({ game: null, draft: [], rackOrder: [], notice: null, hintsUsed: 0, recordedResult: false }),
+      abandon: () => set({ game: null, draft: [], rackOrder: [], notice: null, hintsUsed: 0, recordedResult: false, onlineLog: [] }),
     }),
     {
       name: 'easy-jawi:single:v1',

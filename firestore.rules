@@ -34,5 +34,146 @@ service cloud.firestore {
 
     // roomCodes, serverState (bag + all racks) and rateLimits: no client access
     // (covered by the default deny above).
+
+    // ---------------------------------------------------------------------
+    // Smart Online Jawi Dictionary
+    // ---------------------------------------------------------------------
+
+    // Admins: a non-anonymous account (e.g. Google) listed in admins/{uid}.
+    // admins/{uid} documents are created by the project owner in the Firebase
+    // console (the console bypasses these rules); clients can never write them.
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+    }
+
+    function validKey(key) {
+      return key is string && key.size() >= 2 && key.size() <= 15;
+    }
+
+    function optText(d, field, max) {
+      return !(field in d) || (d[field] is string && d[field].size() <= max);
+    }
+
+    // Central dictionary: everyone signed in may look a word up; only admins
+    // write, always with source, version, reviewer, time and an evidence note.
+    function validDictEntry(key, revision) {
+      let d = request.resource.data;
+      return d.keys().hasAll(['key', 'word', 'status', 'source', 'evidence', 'revision', 'createdAt', 'updatedAt'])
+        && d.keys().hasOnly(['key', 'word', 'status', 'rumi', 'meaningMs', 'reason', 'source', 'evidence', 'revision', 'createdAt', 'updatedAt'])
+        && validKey(key) && d.key == key && d.word == key
+        && d.status in ['verified', 'rejected']
+        && (d.status == 'verified' || (d.reason is string && d.reason.size() >= 2 && d.reason.size() <= 40))
+        && d.revision == revision
+        && d.updatedAt == request.time
+        && optText(d, 'rumi', 60) && optText(d, 'meaningMs', 300) && optText(d, 'reason', 40)
+        && d.source.keys().hasOnly(['id', 'name', 'version'])
+        && d.source.id == 'kamus-pusat'
+        && d.source.name is string && d.source.name.size() >= 3 && d.source.name.size() <= 120
+        && d.source.version is string && d.source.version.size() >= 1 && d.source.version.size() <= 60
+        && d.evidence.keys().hasOnly(['method', 'reviewedBy', 'reviewedAt', 'note'])
+        && d.evidence.method == 'admin-review'
+        && d.evidence.reviewedBy == request.auth.uid
+        && d.evidence.reviewedAt == request.time
+        && d.evidence.note is string && d.evidence.note.size() >= 3 && d.evidence.note.size() <= 500;
+    }
+
+    match /dictionary/{key} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin() && validDictEntry(key, 1) && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && validDictEntry(key, resource.data.revision + 1)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    // Append-only audit trail of admin decisions.
+    match /dictionaryAudit/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['key', 'action', 'status', 'by', 'at', 'note', 'source', 'revision'])
+        && validKey(request.resource.data.key)
+        && request.resource.data.action in ['approve', 'reject', 'add', 'change']
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time;
+    }
+
+    // Player suggestions. A suggestion is accepted only as ONE atomic write of:
+    //   wordSuggestions/{key} (create, or count + 1)
+    //   wordSuggestions/{key}/by/{uid} (first suggestion of this player for this word)
+    //   suggestQuota/{uid} (per-player rate limit)
+    function suggestedOnceNow(key) {
+      let mine = /databases/$(database)/documents/wordSuggestions/$(key)/by/$(request.auth.uid);
+      return !exists(mine) && existsAfter(mine);
+    }
+
+    function quotaUsedNow() {
+      return getAfter(/databases/$(database)/documents/suggestQuota/$(request.auth.uid)).data.lastAt == request.time;
+    }
+
+    match /wordSuggestions/{key} {
+      allow get: if signedIn();
+      allow list, delete: if isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['key', 'word', 'status', 'count', 'firstAt', 'lastAt'])
+        && validKey(key) && request.resource.data.key == key && request.resource.data.word == key
+        && request.resource.data.status == 'pending'
+        && request.resource.data.count == 1
+        && request.resource.data.firstAt == request.time
+        && request.resource.data.lastAt == request.time
+        && suggestedOnceNow(key) && quotaUsedNow();
+      allow update: if
+        (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+          && request.resource.data.status in ['approved', 'rejected', 'pending']
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.reviewedAt == request.time)
+        || (signedIn()
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count', 'lastAt'])
+          && request.resource.data.count == resource.data.count + 1
+          && request.resource.data.lastAt == request.time
+          && suggestedOnceNow(key) && quotaUsedNow());
+
+      match /by/{uid} {
+        allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+        allow list: if isAdmin();
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['at', 'words'])
+          && request.resource.data.at == request.time
+          && request.resource.data.words is list && request.resource.data.words.size() <= 6
+          && getAfter(/databases/$(database)/documents/wordSuggestions/$(key)).data.lastAt == request.time;
+      }
+    }
+
+    // Per-player suggestion limit: ≥ 5 s apart, ≤ 20 per rolling day.
+    match /suggestQuota/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['count', 'windowStart', 'lastAt'])
+        && request.resource.data.count == 1
+        && request.resource.data.windowStart == request.time
+        && request.resource.data.lastAt == request.time;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['count', 'windowStart', 'lastAt'])
+        && request.resource.data.lastAt == request.time
+        && request.time > resource.data.lastAt + duration.value(5, 's')
+        && (
+          (request.time < resource.data.windowStart + duration.value(1, 'd')
+            && request.resource.data.windowStart == resource.data.windowStart
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.count <= 20)
+          || (request.time >= resource.data.windowStart + duration.value(1, 'd')
+            && request.resource.data.windowStart == request.time
+            && request.resource.data.count == 1)
+        );
+    }
+
+    // dictionaryCache and dictRateLimits: server only (default deny).
   }
 }

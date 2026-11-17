@@ -9,6 +9,8 @@ import { randomId } from '../engine/rng';
 import { downloadText } from '../lib/download';
 import { sanitizeNickname } from '../state/settings';
 import { usePacks } from '../state/teacherPacks';
+import { FIREBASE_ENABLED } from '../lib/firebase';
+import { navigate } from '../state/router';
 
 const TEMPLATE = [
   'jawi,rumi,meaningMs,category,difficulty,example',
@@ -147,6 +149,19 @@ export function Teacher() {
             </div>
           ))}
         </section>
+
+        {FIREBASE_ENABLED && (
+          <section className="card grid gap-2 p-4">
+            <h2 className="font-display text-lg font-semibold">Kamus Online Pintar</h2>
+            <p className="text-sm text-ink-soft">
+              Semak perkataan yang dicadangkan oleh pemain, luluskan atau tolak dengan bukti rujukan, dan urus kamus online pusat. Perlukan akaun Google
+              yang didaftarkan sebagai pentadbir.
+            </p>
+            <Button tone="navy" icon="book" onClick={() => navigate('pentadbir')} data-testid="open-dictionary-admin">
+              Pentadbir Kamus Online
+            </Button>
+          </section>
+        )}
       </main>
       <ConfirmSheet
         open={!!del}
