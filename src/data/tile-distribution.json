@@ -1,0 +1,135 @@
+{
+ "meta": {
+  "derivedFrom": "1375 perkataan unik dalam kamus permulaan",
+  "method": "Bilangan jubin ∝ kekerapan huruf (largest remainder, min 1, maks 11); huruf perlu muncul dalam ≥ 10 perkataan. Nilai = 1 + round(log2(fmaks/f) × 1.25), had 1–10.",
+  "disclaimer": "Taburan dan nilai jubin diterbitkan daripada korpus permulaan EASY JAWI. BUKAN nilai rasmi Sahibba. Boleh dikonfigurasi.",
+  "totalLetterTiles": 86,
+  "blanks": 2
+ },
+ "tiles": [
+  {
+   "letter": "ا",
+   "count": 8,
+   "value": 1
+  },
+  {
+   "letter": "ب",
+   "count": 4,
+   "value": 3
+  },
+  {
+   "letter": "ت",
+   "count": 5,
+   "value": 2
+  },
+  {
+   "letter": "ج",
+   "count": 2,
+   "value": 4
+  },
+  {
+   "letter": "چ",
+   "count": 2,
+   "value": 5
+  },
+  {
+   "letter": "ح",
+   "count": 1,
+   "value": 8
+  },
+  {
+   "letter": "د",
+   "count": 3,
+   "value": 4
+  },
+  {
+   "letter": "ر",
+   "count": 5,
+   "value": 2
+  },
+  {
+   "letter": "س",
+   "count": 4,
+   "value": 2
+  },
+  {
+   "letter": "ع",
+   "count": 1,
+   "value": 8
+  },
+  {
+   "letter": "ڠ",
+   "count": 4,
+   "value": 3
+  },
+  {
+   "letter": "ف",
+   "count": 1,
+   "value": 8
+  },
+  {
+   "letter": "ڤ",
+   "count": 4,
+   "value": 3
+  },
+  {
+   "letter": "ق",
+   "count": 2,
+   "value": 4
+  },
+  {
+   "letter": "ک",
+   "count": 4,
+   "value": 3
+  },
+  {
+   "letter": "ݢ",
+   "count": 2,
+   "value": 4
+  },
+  {
+   "letter": "ل",
+   "count": 4,
+   "value": 3
+  },
+  {
+   "letter": "م",
+   "count": 5,
+   "value": 2
+  },
+  {
+   "letter": "ن",
+   "count": 5,
+   "value": 2
+  },
+  {
+   "letter": "و",
+   "count": 8,
+   "value": 1
+  },
+  {
+   "letter": "ه",
+   "count": 3,
+   "value": 4
+  },
+  {
+   "letter": "ء",
+   "count": 1,
+   "value": 7
+  },
+  {
+   "letter": "ي",
+   "count": 7,
+   "value": 1
+  },
+  {
+   "letter": "ڽ",
+   "count": 1,
+   "value": 7
+  }
+ ],
+ "blank": {
+  "count": 2,
+  "value": 0
+ }
+}

@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "sahibba-easy-jawi",
+    "emulator": "demo-easy-jawi"
+  }
+}

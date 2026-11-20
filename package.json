@@ -1,0 +1,53 @@
+{
+  "name": "easy-jawi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "EASY JAWI — Susun Huruf, Bina Perkataan, Jadi Juara! Permainan papan perkataan Jawi.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:single": "tsc -b && vite build --mode single",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --trace off",
+    "lexicon:validate": "tsx scripts/validate-lexicon.ts",
+    "tiles:derive": "tsx scripts/derive-tiles.ts",
+    "build:embedded": "vite build --mode embedded && tsx scripts/build-embedded.ts",
+    "lexicon:export-review": "tsx scripts/export-review.ts",
+    "lexicon:compare-ejawi": "tsx scripts/compare-ejawi.ts",
+    "lexicon:apply-review": "tsx scripts/apply-review.ts",
+    "functions:build": "npm --prefix functions run build",
+    "test:emulator": "npm run functions:build && firebase emulators:exec --only auth,firestore,functions --project demo-easy-jawi \"vitest run --config vitest.emulator.config.ts\"",
+    "test:e2e:mp": "npm run functions:build && firebase emulators:exec --only auth,firestore,functions --project demo-easy-jawi \"playwright test -c playwright.mp.config.ts --trace off\"",
+    "emulators": "npm run functions:build && firebase emulators:start --only auth,firestore,functions --project demo-easy-jawi"
+  },
+  "dependencies": {
+    "@fontsource/fredoka": "^5.2.8",
+    "@fontsource/noto-naskh-arabic": "^5.2.8",
+    "@fontsource/nunito": "^5.2.7",
+    "firebase": "11.10.0",
+    "motion": "^12.42.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "4.0.1",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^22.19.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "firebase-tools": "14.27.0",
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.8",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.1.12"
+  }
+}
